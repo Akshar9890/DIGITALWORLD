@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import OrdersPageClient from "@/components/account/OrdersPageClient";

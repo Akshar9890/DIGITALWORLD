@@ -1,5 +1,8 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
+
 import { useState, useEffect } from "react";
 import { Star, Search, Filter, Check, X } from "lucide-react";
 

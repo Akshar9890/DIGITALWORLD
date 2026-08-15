@@ -1,5 +1,8 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";

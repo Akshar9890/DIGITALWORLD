@@ -1,5 +1,8 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
+
 import { useState, useEffect } from "react";
 import { FileText, Search, Filter, ExternalLink } from "lucide-react";
 import { formatINR } from "@/lib/utils";

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { CheckCircle2, Package, ArrowRight, ShoppingBag } from "lucide-react";
