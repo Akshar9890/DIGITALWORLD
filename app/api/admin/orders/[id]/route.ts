@@ -4,10 +4,12 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { OrderStatus } from "@prisma/client";
 
-
 export const dynamic = "force-dynamic";
+
 const updateOrderSchema = z.object({
   status: z.nativeEnum(OrderStatus),
+  trackingNumber: z.string().optional(),
+  trackingUrl: z.string().optional(),
 });
 
 export async function GET(
@@ -67,9 +69,17 @@ export async function PUT(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
+    const updateData: any = { status: result.data.status };
+    if (result.data.trackingNumber !== undefined) {
+      updateData.trackingNumber = result.data.trackingNumber;
+    }
+    if (result.data.trackingUrl !== undefined) {
+      updateData.trackingUrl = result.data.trackingUrl;
+    }
+
     const order = await db.order.update({
       where: { id },
-      data: { status: result.data.status },
+      data: updateData,
     });
 
     return NextResponse.json(order);

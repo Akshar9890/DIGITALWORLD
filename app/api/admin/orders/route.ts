@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       where = {
         OR: [
           { paymentStatus: "captured" },
-          { status: { in: ["processing", "shipped", "delivered", "completed"] } },
+          { status: { in: ["processing", "shipped", "delivered"] } },
         ],
       };
     }
