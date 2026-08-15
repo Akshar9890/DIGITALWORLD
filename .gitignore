@@ -1,0 +1,41 @@
+# ─── Dependencies ────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Next.js ─────────────────────────────────────────────────────
+.next/
+out/
+build/
+dist/
+
+# ─── Environment — NEVER commit secrets ──────────────────────────
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# ─── Prisma ──────────────────────────────────────────────────────
+prisma/migrations/
+# Keep schema.prisma (needed for Vercel build)
+
+# ─── Debug / Logs ────────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ─── OS / Editor ─────────────────────────────────────────────────
+.DS_Store
+*.pem
+Thumbs.db
+.vscode/
+.idea/
+
+# ─── Vercel ──────────────────────────────────────────────────────
+.vercel
+
+# ─── TypeScript ──────────────────────────────────────────────────
+*.tsbuildinfo
+next-env.d.ts

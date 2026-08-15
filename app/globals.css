@@ -1,0 +1,384 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────────────────
+   CSS Custom Properties — Design Tokens (07-DESIGN.md)
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --color-primary: #B32418;
+  --color-primary-hover: #920503;
+  --color-charcoal: #2B2B2E;
+  --color-accent: #F2A93B;
+  --color-bg: #FAFAF8;
+  --color-gray: #6B6E73;
+  --color-success: #1E7A46;
+  --color-error: #C6362B;
+  --color-white: #FFFFFF;
+
+  --radius-card: 12px;
+  --radius-control: 8px;
+  --space-unit: 4px;
+  --font-heading: ui-sans-serif, system-ui, sans-serif;
+  --font-body: ui-sans-serif, system-ui, sans-serif;
+}
+
+.industrial-grid {
+  background-image:
+    linear-gradient(rgba(90, 64, 60, 0.13) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(90, 64, 60, 0.13) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: linear-gradient(to bottom, black, transparent 68%);
+}
+
+.product-silhouette {
+  background:
+    radial-gradient(ellipse at 70% 56%, rgba(255, 185, 86, 0.55) 0 3%, transparent 3.5%),
+    linear-gradient(105deg, transparent 22%, rgba(226, 227, 225, 0.88) 22.5% 25%, transparent 25.5%),
+    linear-gradient(80deg, transparent 28%, rgba(226, 227, 225, 0.78) 28.5% 31%, transparent 31.5%),
+    linear-gradient(160deg, transparent 36%, rgba(179, 36, 24, 0.8) 36.5% 66%, transparent 66.5%);
+  filter: drop-shadow(0 0 38px rgba(179, 36, 24, 0.55));
+}
+
+/* Keep quantity fields legible and consistent across Chrome, Safari and Firefox. */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Material Symbols
+   ───────────────────────────────────────────────────────────────────────── */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-family: 'Material Symbols Outlined', sans-serif;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.material-symbols-outlined[data-weight="fill"] {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Base
+   ───────────────────────────────────────────────────────────────────────── */
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-background text-on-surface font-body-md antialiased;
+  }
+
+  * {
+    @apply box-border;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface-container;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-surface-container-high rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-gray;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Component Classes
+   ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+
+  /* Glassmorphic bento card — used across all Stitch pages */
+  .bento-card {
+    background-color: rgba(26, 26, 28, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(107, 110, 115, 0.2);
+    @apply rounded-xl transition-all duration-300;
+  }
+
+  .bento-card:hover {
+    border-color: rgba(107, 110, 115, 0.4);
+  }
+
+  /* Primary button — Deep red */
+  .btn-primary {
+    @apply bg-primary-container text-on-primary-container
+           px-6 py-3 rounded-control font-label-caps text-label-caps tracking-wider
+           transition-all duration-200 flex items-center justify-center gap-2
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: #920503;
+    @apply scale-[0.98];
+  }
+  .btn-primary:active:not(:disabled) {
+    @apply scale-95;
+  }
+
+  /* Secondary button — Ghost border */
+  .btn-secondary {
+    @apply bg-surface-charcoal text-on-surface
+           border border-slate-gray/20
+           px-6 py-3 rounded-control font-label-caps text-label-caps tracking-wider
+           transition-all duration-200 flex items-center justify-center gap-2
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    @apply border-tertiary shadow-[0_0_10px_rgba(255,185,86,0.2)];
+  }
+
+  /* Danger button */
+  .btn-danger {
+    @apply bg-status-error text-white
+           px-6 py-3 rounded-control font-label-caps text-label-caps tracking-wider
+           transition-all duration-200 flex items-center justify-center gap-2;
+  }
+  .btn-danger:hover {
+    @apply bg-error-container scale-[0.98];
+  }
+
+  /* Form input */
+  .input-field {
+    @apply w-full bg-surface-container border border-outline-variant/30
+           text-on-surface placeholder:text-slate-gray
+           rounded-control px-4 py-3 text-body-md
+           focus:outline-none focus:border-tertiary focus:ring-1 focus:ring-tertiary/50
+           transition-colors duration-200;
+  }
+
+  .input-label {
+    @apply block text-body-technical text-on-surface-variant mb-1;
+  }
+
+  .input-error {
+    @apply mt-1 text-body-technical text-status-error flex items-center gap-1;
+  }
+
+  /* Status badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-label-caps font-label-caps;
+  }
+  .badge-wholesale {
+    @apply badge bg-tertiary/20 text-tertiary border border-tertiary/30;
+  }
+  .badge-success {
+    @apply badge bg-status-success/20 text-status-success border border-status-success/30;
+  }
+  .badge-pending {
+    @apply badge bg-slate-gray/20 text-slate-gray border border-slate-gray/30;
+  }
+  .badge-error {
+    @apply badge bg-status-error/20 text-status-error border border-status-error/30;
+  }
+  .badge-info {
+    @apply badge bg-primary-container/20 text-primary-container border border-primary-container/30;
+  }
+
+  /* Section header */
+  .section-label {
+    @apply font-label-caps text-label-caps text-slate-gray tracking-widest uppercase mb-2;
+  }
+
+  /* Card stat/metric */
+  .stat-card {
+    @apply bento-card p-5 flex flex-col gap-1;
+  }
+  .stat-value {
+    @apply font-headline-md text-headline-md text-on-surface;
+  }
+  .stat-label {
+    @apply font-body-technical text-body-technical text-slate-gray;
+  }
+
+  /* Table */
+  .data-table {
+    @apply w-full text-body-technical;
+  }
+  .data-table thead tr {
+    @apply bg-surface-container-high text-on-surface-variant border-b border-outline-variant/20;
+  }
+  .data-table thead th {
+    @apply px-4 py-3 text-left font-label-caps text-label-caps tracking-wider;
+  }
+  .data-table tbody tr {
+    @apply border-b border-outline-variant/10 hover:bg-surface-container/50 transition-colors;
+  }
+  .data-table tbody td {
+    @apply px-4 py-3 text-on-surface;
+  }
+
+  /* Pricing tier table */
+  .tier-table {
+    @apply w-full text-body-technical rounded-xl overflow-hidden border border-outline-variant/20;
+  }
+  .tier-table thead {
+    @apply bg-surface-container-high;
+  }
+  .tier-table thead th {
+    @apply px-4 py-3 text-left font-label-caps text-label-caps text-on-surface-variant;
+  }
+  .tier-table tbody tr:nth-child(odd) {
+    @apply bg-surface-container;
+  }
+  .tier-table tbody tr:nth-child(even) {
+    @apply bg-surface-container-low;
+  }
+  .tier-table tbody td {
+    @apply px-4 py-3;
+  }
+  .tier-table .price {
+    @apply text-primary-container font-bold;
+  }
+  .tier-table .active-row {
+    @apply bg-primary-container/10 border-l-2 border-primary-container;
+  }
+
+  /* Shimmer loading skeleton */
+  .skeleton {
+    @apply bg-gradient-to-r from-surface-container via-surface-container-high to-surface-container
+           bg-[length:200%_100%] animate-shimmer rounded;
+  }
+
+  /* Page container */
+  .page-container {
+    @apply w-full max-w-[1440px] mx-auto px-margin-mobile md:px-margin-desktop;
+  }
+
+  /* Section spacing */
+  .section-spacing {
+    @apply py-12 md:py-20;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Utility Classes
+   ───────────────────────────────────────────────────────────────────────── */
+@layer utilities {
+  .animate-fade-in-up { @apply animate-[fadeInUp_0.8s_ease-out_forwards]; }
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+
+  /* Initial hidden state for animations */
+  .animate-fade-in-up,
+  .animate-fade-in,
+  .animate-slide-in-right {
+    opacity: 0;
+  }
+
+  /* Glass effect */
+  .glass {
+    background-color: rgba(26, 26, 28, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* Text gradient */
+  .text-gradient-red {
+    background: linear-gradient(135deg, #B32418, #ff6b5b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow effects */
+  .glow-red {
+    box-shadow: 0 0 20px rgba(179, 36, 24, 0.3);
+  }
+  .glow-amber {
+    box-shadow: 0 0 20px rgba(255, 185, 86, 0.2);
+  }
+
+  /* Star rating */
+  .star-filled { color: #ffb956; }
+  .star-empty { color: rgba(107, 110, 115, 0.3); }
+
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Print — Instant Quotation documents
+   Hides the site chrome (nav/footer/buttons) and prints only the white
+   quotation document.
+   ───────────────────────────────────────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  /* Print only the quotation document, never the page chrome or surrounding UI. */
+  body * {
+    visibility: hidden !important;
+  }
+
+  .print-doc,
+  .print-doc * {
+    visibility: visible !important;
+  }
+
+  .print-doc {
+    position: absolute !important;
+    inset: 0 auto auto 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .no-print,
+  .print\\:hidden,
+  nav,
+  footer {
+    display: none !important;
+  }
+
+  /* Quotation document rendered by QuotationView */
+  .print-doc .bento-card {
+    box-shadow: none !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+}
