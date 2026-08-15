@@ -254,23 +254,35 @@ export default async function OrderDetailPage({
         )}
       </div>
 
-      {/* Invoice */}
-      {order.invoice && (
-        <div className="bento-card p-6 flex items-center justify-between">
-          <div>
-            <h3 className="font-headline-sm text-white">Invoice</h3>
-            <p className="text-xs text-slate-gray">{order.invoice.invoiceNumber}</p>
+      {/* Tax Invoice Section */}
+      {isPaid && (
+        <div className="bento-card p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-status-success/30">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-status-success/20 flex items-center justify-center text-status-success shrink-0">
+              <CreditCard size={20} />
+            </div>
+            <div>
+              <h3 className="font-headline-sm text-white">GST Tax Invoice</h3>
+              <p className="text-xs text-slate-gray">
+                {order.invoice?.invoiceNumber || `DW-INV-2026-${order.orderNumber.replace("DW-2026-", "")}`}
+              </p>
+            </div>
           </div>
-          {order.invoice.pdfUrl && (
-            <a
-              href={order.invoice.pdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary text-sm py-2 px-4"
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Link
+              href={`/orders/${order.id}/invoice`}
+              className="btn-primary text-xs py-2 px-4 flex-1 sm:flex-none text-center"
             >
-              DOWNLOAD INVOICE
+              VIEW ONLINE
+            </Link>
+            <a
+              href={`/api/orders/${order.id}/invoice/pdf?download=1`}
+              download={`DW-INV-${order.orderNumber}.pdf`}
+              className="btn-secondary text-xs py-2 px-4 border-status-success text-status-success flex-1 sm:flex-none text-center hover:bg-status-success/20"
+            >
+              DOWNLOAD PDF
             </a>
-          )}
+          </div>
         </div>
       )}
     </div>
