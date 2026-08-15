@@ -27,8 +27,28 @@ export interface CourierCharge {
  * - 31 to 100 pcs: Free Shipping (₹0)
  * - Bulk orders (>100 pcs): Shipping quoted by team
  */
-export function getCourierCharge(totalWeightGrams: number = 0, totalQuantity: number = 1): CourierCharge {
+export interface ShippingRulesConfig {
+  charge1to10?: number;
+  charge11to20?: number;
+  charge21to30?: number;
+  freeThresholdQty?: number;
+}
+
+/**
+ * Courier charge for a given total shipment weight and quantity.
+ * Supports configurable rates set by Admin.
+ */
+export function getCourierCharge(
+  totalWeightGrams: number = 0,
+  totalQuantity: number = 1,
+  config?: ShippingRulesConfig
+): CourierCharge {
   if (totalQuantity <= 0) return { amount: 0, isFree: true, isBulk: false };
+
+  const c1to10 = config?.charge1to10 ?? 100;
+  const c11to20 = config?.charge11to20 ?? 200;
+  const c21to30 = config?.charge21to30 ?? 300;
+  const freeQty = config?.freeThresholdQty ?? 31;
 
   if (totalQuantity > 100) {
     return {
@@ -39,25 +59,26 @@ export function getCourierCharge(totalWeightGrams: number = 0, totalQuantity: nu
     };
   }
 
-  if (totalQuantity >= 31 || (totalQuantity >= 30 && totalQuantity <= 100)) {
+  if (totalQuantity >= freeQty) {
     return {
       amount: 0,
       isFree: true,
       isBulk: false,
-      note: "Free Shipping (30-100 PCS)",
+      note: `Free Shipping (${freeQty}+ PCS)`,
     };
   }
 
   if (totalQuantity >= 21) {
-    return { amount: 300, isFree: false, isBulk: false };
+    return { amount: c21to30, isFree: false, isBulk: false };
   }
 
   if (totalQuantity >= 11) {
-    return { amount: 200, isFree: false, isBulk: false };
+    return { amount: c11to20, isFree: false, isBulk: false };
   }
 
-  return { amount: 100, isFree: false, isBulk: false };
+  return { amount: c1to10, isFree: false, isBulk: false };
 }
+
 
 /**
  * GST amount on goods (18% flat).
