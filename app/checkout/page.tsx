@@ -65,9 +65,22 @@ export default function CheckoutPage() {
     setValue("pincode", val, { shouldValidate: val.length === 6 });
   };
 
+  // Fetch active admin shipping rules
+  const { data: shippingRules } = useQuery({
+    queryKey: ["shipping-rules"],
+    queryFn: async () => {
+      const res = await fetch("/api/shipping-rules");
+      if (!res.ok) return undefined;
+      return res.json();
+    },
+  });
+
   const subtotal = cart?.subtotal || 0;
-  // Shared courier + GST rules — identical to the instant quotation engine.
-  const courier = getCourierCharge(subtotal);
+  const totalQuantity = cart?.items?.reduce((acc: number, item: any) => acc + item.quantity, 0) || 1;
+  const totalWeight = cart?.items?.reduce((acc: number, item: any) => acc + (item.product?.weightGrams || 280) * item.quantity, 0) || 280;
+
+  // Courier charge calculated using active admin rates
+  const courier = getCourierCharge(totalWeight, totalQuantity, shippingRules);
   const shipping = courier.amount;
   const gstAmount = getGSTAmount(subtotal);
   const total = subtotal + shipping + gstAmount;

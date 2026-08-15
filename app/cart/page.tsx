@@ -112,11 +112,21 @@ export default function CartPage() {
     );
   }
 
+  // Fetch active admin shipping rules
+  const { data: shippingRules } = useQuery({
+    queryKey: ["shipping-rules"],
+    queryFn: async () => {
+      const res = await fetch("/api/shipping-rules");
+      if (!res.ok) return undefined;
+      return res.json();
+    },
+  });
+
   const isEmpty = !cart || cart.items.length === 0;
 
   const totalQuantity = cart?.items.reduce((acc, i) => acc + i.quantity, 0) || 0;
   const gstAmount = cart ? getGSTAmount(cart.subtotal) : 0;
-  const courier = cart ? getCourierCharge(cart.totalWeightGrams, totalQuantity) : { amount: 0, isFree: true, isBulk: false };
+  const courier = cart ? getCourierCharge(cart.totalWeightGrams, totalQuantity, shippingRules) : { amount: 0, isFree: true, isBulk: false };
   const grandTotal = cart ? cart.subtotal + gstAmount + courier.amount : 0;
 
   return (

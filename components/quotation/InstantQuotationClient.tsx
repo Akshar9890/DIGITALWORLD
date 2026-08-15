@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
 import { QuotationView, QuotationViewData } from "@/components/quotation/QuotationView";
@@ -102,12 +102,22 @@ export function InstantQuotationClient({ products, initialSlug, initialQty }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
+  // Fetch active admin shipping rules
+  const { data: shippingRules } = useQuery({
+    queryKey: ["shipping-rules"],
+    queryFn: async () => {
+      const res = await fetch("/api/shipping-rules");
+      if (!res.ok) return undefined;
+      return res.json();
+    },
+  });
+
   const activeTier = getPriceForQuantity(tierTable, quantity);
   const displayPrice = activeTier?.pricePerUnit || 0;
   const subtotal = displayPrice * quantity;
   const gstAmount = getGSTAmount(subtotal);
   const totalWeightGrams = product ? product.weightGrams * quantity : 0;
-  const courier = getCourierCharge(totalWeightGrams, quantity);
+  const courier = getCourierCharge(totalWeightGrams, quantity, shippingRules);
   const grandTotal = subtotal + gstAmount + courier.amount;
   const nextTierHint = getNextTierHint(tierTable, quantity);
   const standardPrice = tierTable.length > 0 ? tierTable[0].pricePerUnit : 0;

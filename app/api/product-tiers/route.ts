@@ -7,21 +7,30 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/product-tiers?productId=xxx
  * Returns the full quantity-tier pricing table for a product.
- * Used by the Instant Quotation wizard for client-side live preview.
- * The server always re-resolves final prices via /api/quotation.
+ * If productId is missing, defaults to the first active product.
  */
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const productId = searchParams.get("productId");
+    let productId = searchParams.get("productId");
 
     if (!productId) {
-      return NextResponse.json({ error: "Missing productId" }, { status: 400 });
+      const firstProduct = await db.product.findFirst({
+        where: { isActive: true },
+        select: { id: true },
+      });
+      if (firstProduct) {
+        productId = firstProduct.id;
+      }
+    }
+
+    if (!productId) {
+      return NextResponse.json({ error: "No products available" }, { status: 404 });
     }
 
     const product = await db.product.findUnique({
       where: { id: productId },
-      select: { id: true, isActive: true },
+      select: { id: true, name: true, slug: true, isActive: true },
     });
 
     if (!product || !product.isActive) {
@@ -30,7 +39,7 @@ export async function GET(req: Request) {
 
     const tiers = await getTierTable(productId, { role: "retail" }, 1);
 
-    return NextResponse.json({ tiers });
+    return NextResponse.json({ productId, productName: product.name, productSlug: product.slug, tiers });
   } catch (error) {
     console.error("product-tiers error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

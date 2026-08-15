@@ -123,9 +123,29 @@ export async function POST(req: Request) {
       });
     }
 
-    // Courier + GST — same helpers as the Instant Quotation
+    // Courier + GST — fetch active admin shipping rule from DB
     const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0);
-    const courier = getCourierCharge(totalWeightGrams, totalQuantity);
+
+    const shippingRule = await db.shippingRule.findUnique({
+      where: { id: "default-shipping" },
+    });
+
+    let shippingConfig;
+    if (shippingRule?.notes) {
+      try {
+        const parsed = JSON.parse(shippingRule.notes);
+        shippingConfig = {
+          charge1to10: Number(parsed.charge1to10 ?? 100),
+          charge11to20: Number(parsed.charge11to20 ?? 200),
+          charge21to30: Number(parsed.charge21to30 ?? 300),
+          freeThresholdQty: Number(parsed.freeThresholdQty ?? 31),
+        };
+      } catch {
+        // fallback
+      }
+    }
+
+    const courier = getCourierCharge(totalWeightGrams, totalQuantity, shippingConfig);
 
     const shippingAmount = courier.amount;
     const totalGST = getGSTAmount(subtotal);

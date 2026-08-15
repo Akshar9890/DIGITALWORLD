@@ -1,20 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { AnimatedCounter } from "@/components/ui/AnimatedCounter";
-import { MagneticButton } from "@/components/ui/MagneticButton";
 import { formatINR } from "@/lib/utils";
-import { Minus, Plus, ShoppingCart, FileText, Zap, Flame, CheckCircle2, ArrowRight } from "lucide-react";
+import { getPriceForQuantity } from "@/lib/pricing";
+import { Minus, Plus, ShoppingCart, FileText, Zap, Flame, CheckCircle2 } from "lucide-react";
+
+type TierItem = {
+  tierId: string;
+  tierName: string;
+  minQty: number;
+  maxQty: number | null;
+  pricePerUnit: number;
+  isRetail: boolean;
+  isActive: boolean;
+};
+
+// Default fallback tiers if loading
+const DEFAULT_TIERS: TierItem[] = [
+  { tierId: "t1", tierName: "1–9 PCS", minQty: 1, maxQty: 9, pricePerUnit: 300, isRetail: true, isActive: false },
+  { tierId: "t2", tierName: "10–49 PCS", minQty: 10, maxQty: 49, pricePerUnit: 275, isRetail: false, isActive: false },
+  { tierId: "t3", tierName: "50–99 PCS", minQty: 50, maxQty: 99, pricePerUnit: 225, isRetail: false, isActive: false },
+  { tierId: "t4", tierName: "100–499 PCS", minQty: 100, maxQty: 499, pricePerUnit: 200, isRetail: false, isActive: false },
+  { tierId: "t5", tierName: "500+ PCS", minQty: 500, maxQty: null, pricePerUnit: 165, isRetail: false, isActive: false },
+];
 
 export function HomePricingCalculator() {
   const router = useRouter();
   const [quantity, setQuantity] = useState(10);
   const [adding, setAdding] = useState(false);
   const [selectedImg, setSelectedImg] = useState("/images/products/heat-aerosol-1.jpg");
+  const [productId, setProductId] = useState<string | null>(null);
+  const [productName, setProductName] = useState("DW-AERO 100 Suppression Device");
+  const [tiers, setTiers] = useState<TierItem[]>(DEFAULT_TIERS);
 
   const productPhotos = [
     { src: "/images/products/heat-aerosol-1.jpg", label: "Action" },
@@ -23,27 +45,52 @@ export function HomePricingCalculator() {
     { src: "/images/products/heat-aerosol-2.jpg", label: "Dimensions" },
   ];
 
-  // Pricing logic matching backend defaults
-  const tiers = [
-    { minQty: 1, maxQty: 9, price: 300, name: "Retail Tier" },
-    { minQty: 10, maxQty: 49, price: 275, name: "Tier 1 (10+)" },
-    { minQty: 50, maxQty: 99, price: 225, name: "Tier 2 (50+)" },
-    { minQty: 100, maxQty: 499, price: 200, name: "Tier 3 (100+)" },
-    { minQty: 500, maxQty: null, price: 165, name: "Tier 4 (500+)" },
-  ];
+  // Fetch live prices from DB on load
+  useEffect(() => {
+    async function loadLivePrices() {
+      try {
+        const res = await fetch("/api/product-tiers");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.tiers && data.tiers.length > 0) {
+            setTiers(data.tiers);
+          }
+          if (data.productId) {
+            setProductId(data.productId);
+          }
+          if (data.productName) {
+            setProductName(data.productName);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load live product tiers:", err);
+      }
+    }
+    loadLivePrices();
+  }, []);
 
-  const currentTier = tiers.find(
-    (t) => quantity >= t.minQty && (t.maxQty === null || quantity <= t.maxQty)
-  ) || tiers[0];
+  const activeTierMatch = getPriceForQuantity(
+    tiers.map((t) => ({
+      tierId: t.tierId,
+      tierName: t.tierName,
+      minQty: t.minQty,
+      maxQty: t.maxQty,
+      pricePerUnit: t.pricePerUnit,
+    })),
+    quantity
+  );
 
-  const unitPrice = currentTier.price;
-  const standardPrice = 300;
+  const currentTier = tiers.find((t) => t.tierId === activeTierMatch?.tierId) || tiers[0];
+  const unitPrice = currentTier.pricePerUnit;
+  const retailTier = tiers.find((t) => t.minQty === 1) || tiers[0];
+  const standardPrice = retailTier.pricePerUnit;
   const subtotal = unitPrice * quantity;
-  const totalSavings = (standardPrice - unitPrice) * quantity;
+  const totalSavings = Math.max(0, (standardPrice - unitPrice) * quantity);
 
-  // Next tier hint
-  const currentTierIndex = tiers.findIndex((t) => t === currentTier);
-  const nextTier = tiers[currentTierIndex + 1];
+  // Next tier hint calculation
+  const sortedTiers = [...tiers].sort((a, b) => a.minQty - b.minQty);
+  const currentTierIndex = sortedTiers.findIndex((t) => t.tierId === currentTier.tierId);
+  const nextTier = sortedTiers[currentTierIndex + 1];
   const itemsToNextTier = nextTier ? nextTier.minQty - quantity : 0;
 
   const handleQtyChange = (delta: number) => {
@@ -57,7 +104,7 @@ export function HomePricingCalculator() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          productId: "cm6t68001000008l41yq01yq0",
+          productId: productId || "cm6t68001000008l41yq01yq0",
           quantity,
         }),
       });
@@ -96,10 +143,10 @@ export function HomePricingCalculator() {
             </h3>
 
             {tiers.map((t) => {
-              const isActive = currentTier === t;
+              const isActive = currentTier.tierId === t.tierId;
               return (
                 <div
-                  key={t.name}
+                  key={t.tierId || t.tierName}
                   onClick={() => setQuantity(t.minQty)}
                   className={`cursor-pointer p-4 rounded-xl border transition-all flex items-center justify-between ${
                     isActive
@@ -117,13 +164,13 @@ export function HomePricingCalculator() {
                       <span className="font-headline-sm text-sm text-white font-semibold block">
                         {t.minQty} {t.maxQty ? `– ${t.maxQty}` : "+"} PCS
                       </span>
-                      <span className="text-xs text-slate-gray">{t.name}</span>
+                      <span className="text-xs text-slate-gray">{t.tierName}</span>
                     </div>
                   </div>
 
                   <div className="text-right">
                     <span className="font-headline-sm text-base text-white font-mono block">
-                      {formatINR(t.price)}
+                      {formatINR(t.pricePerUnit)}
                     </span>
                     <span className="text-[11px] text-slate-gray">/ UNIT + GST</span>
                   </div>
@@ -139,7 +186,7 @@ export function HomePricingCalculator() {
                 <span className="font-label-caps text-xs text-tertiary tracking-widest block">
                   LIVE ESTIMATOR
                 </span>
-                <h3 className="font-headline-sm text-xl text-white mt-1">DW-AERO 100 Suppression Device</h3>
+                <h3 className="font-headline-sm text-xl text-white mt-1">{productName}</h3>
               </div>
               <Flame size={24} className="text-primary-container shrink-0" />
             </div>
@@ -149,7 +196,7 @@ export function HomePricingCalculator() {
               <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden border border-outline-variant/20 mb-3 bg-black">
                 <Image
                   src={selectedImg}
-                  alt="DW-AERO 100 Photo"
+                  alt="Product Photo"
                   fill
                   className="object-contain p-2"
                 />
@@ -210,7 +257,7 @@ export function HomePricingCalculator() {
                 <div className="mt-3 p-2.5 rounded-lg bg-tertiary/10 border border-tertiary/30 text-xs text-tertiary flex items-center gap-2">
                   <Zap size={14} className="shrink-0" />
                   <span>
-                    Add <strong>{itemsToNextTier} more pcs</strong> to unlock {formatINR(nextTier.price)}/unit price!
+                    Add <strong>{itemsToNextTier} more pcs</strong> to unlock {formatINR(nextTier.pricePerUnit)}/unit price!
                   </span>
                 </div>
               )}
@@ -219,7 +266,7 @@ export function HomePricingCalculator() {
             {/* Calculations Breakdown */}
             <div className="space-y-3 bg-surface-container/70 p-5 rounded-xl border border-outline-variant/20 mb-8">
               <div className="flex justify-between text-sm">
-                <span className="text-slate-gray">Unit Price ({currentTier.name})</span>
+                <span className="text-slate-gray">Unit Price ({currentTier.tierName})</span>
                 <AnimatedCounter value={unitPrice} className="text-white font-semibold" />
               </div>
 
