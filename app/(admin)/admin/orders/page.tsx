@@ -250,7 +250,7 @@ export default function AdminOrdersPage() {
                       </td>
                       <td>
                         <span className={STATUS_BADGE[order.status]}>
-                          {order.status.replace(/_/g, " ")}
+                          {order.status === "processing" ? "Paid (Processing)" : order.status.replace(/_/g, " ")}
                         </span>
                       </td>
                       <td className="text-slate-gray">

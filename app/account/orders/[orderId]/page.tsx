@@ -13,11 +13,12 @@ import {
   Clock,
   MapPin,
   CreditCard,
+  Check,
 } from "lucide-react";
 
 const statusSteps = [
   { key: "pending_payment", label: "Order Placed", icon: Clock },
-  { key: "processing", label: "Processing", icon: Package },
+  { key: "processing", label: "Paid & Processing", icon: Package },
   { key: "shipped", label: "Shipped", icon: Truck },
   { key: "delivered", label: "Delivered", icon: CheckCircle2 },
 ];
@@ -59,6 +60,7 @@ export default async function OrderDetailPage({
   if (!order) notFound();
 
   const currentStep = getStatusIndex(order.status);
+  const isPaid = order.paymentStatus === "captured" || order.status !== "pending_payment";
 
   return (
     <div className="flex flex-col gap-8">
@@ -70,8 +72,15 @@ export default async function OrderDetailPage({
           <ArrowLeft size={18} />
         </Link>
         <div>
-          <h2 className="font-headline-md text-white">Order {order.orderNumber}</h2>
-          <p className="text-xs text-slate-gray">
+          <div className="flex items-center gap-3">
+            <h2 className="font-headline-md text-white">Order {order.orderNumber}</h2>
+            {isPaid && (
+              <span className="bg-status-success/20 text-status-success text-xs px-2.5 py-1 rounded-full font-bold border border-status-success/30 flex items-center gap-1">
+                <Check size={12} /> Payment Confirmed
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-slate-gray mt-0.5">
             Placed on{" "}
             {order.createdAt.toLocaleDateString("en-IN", {
               day: "numeric",
@@ -82,9 +91,28 @@ export default async function OrderDetailPage({
         </div>
       </div>
 
+      {/* Payment Confirmation Banner */}
+      {isPaid && (
+        <div className="bento-card p-4 border-status-success/30 bg-status-success/10 flex items-center gap-3">
+          <CheckCircle2 size={24} className="text-status-success shrink-0" />
+          <div>
+            <p className="text-sm font-bold text-white">Payment Received Successfully!</p>
+            <p className="text-xs text-on-surface-variant">
+              Your payment has been captured via Razorpay. Our warehouse team is now packing and preparing your items for shipment.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Status Tracker */}
       <div className="bento-card p-6">
-        <h3 className="font-headline-sm text-white mb-6">Order Status</h3>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-headline-sm text-white">Fulfillment Status</h3>
+          <span className="text-xs font-bold text-tertiary uppercase tracking-wider">
+            {order.status === "processing" ? "Paid & Packing" : order.status}
+          </span>
+        </div>
+
         <div className="flex items-center justify-between relative">
           {/* Progress line */}
           <div className="absolute top-5 left-0 right-0 h-0.5 bg-surface-container-high" />
@@ -109,7 +137,7 @@ export default async function OrderDetailPage({
                 </div>
                 <span
                   className={`text-[11px] font-label-caps tracking-wider text-center ${
-                    isCompleted ? "text-on-surface" : "text-slate-gray"
+                    isCompleted ? "text-on-surface font-bold" : "text-slate-gray"
                   }`}
                 >
                   {step.label}
@@ -194,14 +222,14 @@ export default async function OrderDetailPage({
             </div>
           </div>
           {order.payment && (
-            <div className="mt-4 pt-3 border-t border-outline-variant/20 text-xs text-slate-gray">
-              <span>Payment: </span>
-              <span className={`capitalize ${
-                order.payment.status === "captured" ? "text-status-success" : "text-tertiary"
-              }`}>
-                {order.payment.status}
-              </span>
-              {order.payment.method && <span> via {order.payment.method.toUpperCase()}</span>}
+            <div className="mt-4 pt-3 border-t border-outline-variant/20 text-xs text-slate-gray flex items-center justify-between">
+              <div>
+                <span>Payment Status: </span>
+                <span className="text-status-success font-bold uppercase">
+                  {order.payment.status === "captured" ? "✓ CONFIRMED (PAID)" : order.payment.status}
+                </span>
+                {order.payment.method && <span className="text-slate-gray"> via {order.payment.method.toUpperCase()}</span>}
+              </div>
             </div>
           )}
         </div>

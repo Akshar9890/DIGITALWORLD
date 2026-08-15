@@ -44,9 +44,11 @@ interface DashboardData {
 
 function statusBadge(status: string) {
   const s = status.toLowerCase();
+  if (s === "processing")
+    return <span className="badge-success">Paid (Processing)</span>;
   if (["delivered", "completed", "approved", "paid"].includes(s))
     return <span className="badge-success">{status}</span>;
-  if (["processing", "pending", "sent", "in_progress"].includes(s))
+  if (["pending", "sent", "in_progress"].includes(s))
     return <span className="badge-pending">{status.replace("_", " ")}</span>;
   if (["cancelled", "rejected", "refunded", "failed"].includes(s))
     return <span className="badge-error">{status}</span>;
