@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { cookies } from "next/headers";
 import crypto from "crypto";
 import { z } from "zod";
+import { sendOrderConfirmationEmail } from "@/lib/email";
 
 const verifySchema = z.object({
   orderId: z.string(),
@@ -71,6 +72,40 @@ export async function POST(req: Request) {
 
       return updated;
     });
+
+    // ── Send Email Notification ──────────────────────────────────────────────
+    try {
+      const orderWithItems = await db.order.findUnique({
+        where: { id: order.id },
+        include: {
+          items: { include: { product: { select: { name: true } } } },
+          shippingAddress: true,
+          user: { select: { name: true, email: true } },
+        },
+      });
+
+      if (orderWithItems) {
+        const email = orderWithItems.user?.email || "customer@digitalworld.com";
+        const name = orderWithItems.shippingAddress?.name || orderWithItems.user?.name || "Valued Customer";
+
+        await sendOrderConfirmationEmail({
+          customerEmail: email,
+          customerName: name,
+          orderNumber: orderWithItems.orderNumber,
+          orderId: orderWithItems.id,
+          grandTotal: Number(orderWithItems.grandTotal),
+          createdAt: orderWithItems.createdAt,
+          items: orderWithItems.items.map((i) => ({
+            name: i.product.name,
+            quantity: i.quantity,
+            unitPrice: Number(i.unitPrice),
+            total: Number(i.lineTotal),
+          })),
+        });
+      }
+    } catch (emailErr) {
+      console.error("Non-blocking order email error:", emailErr);
+    }
 
     return NextResponse.json({ success: true, orderId: order.id, orderNumber: order.orderNumber });
   } catch (error) {

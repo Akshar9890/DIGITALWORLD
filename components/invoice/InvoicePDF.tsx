@@ -13,6 +13,7 @@ export type InvoicePDFData = {
   invoiceNumber: string;
   orderNumber: string;
   issuedAt: Date;
+  estimatedDelivery?: string;
 
   sellerName: string;
   sellerGstin: string;
@@ -305,6 +306,12 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
               <Text style={styles.boxText}>
                 <Text style={{ fontWeight: "bold" }}>Payment: </Text>
                 {data.paymentMethod.toUpperCase()}
+              </Text>
+            )}
+            {data.estimatedDelivery && (
+              <Text style={styles.boxText}>
+                <Text style={{ fontWeight: "bold" }}>Est. Delivery: </Text>
+                {data.estimatedDelivery}
               </Text>
             )}
             {data.paymentId && (

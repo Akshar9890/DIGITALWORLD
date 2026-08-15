@@ -116,3 +116,28 @@ export function generateQuotationNumber(sequence: number): string {
   const year = new Date().getFullYear();
   return `DW-QT-${year}-${String(sequence).padStart(4, "0")}`;
 }
+
+/** Calculate estimated delivery date range (3-5 business days) */
+export function getEstimatedDeliveryRange(orderDate: Date | string): {
+  minDate: string;
+  maxDate: string;
+  displayText: string;
+} {
+  const base = new Date(orderDate);
+  const minDateObj = new Date(base);
+  minDateObj.setDate(minDateObj.getDate() + 3);
+
+  const maxDateObj = new Date(base);
+  maxDateObj.setDate(maxDateObj.getDate() + 5);
+
+  const formatOpt: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+  const minStr = minDateObj.toLocaleDateString("en-IN", formatOpt);
+  const maxStr = maxDateObj.toLocaleDateString("en-IN", formatOpt);
+
+  return {
+    minDate: minStr,
+    maxDate: maxStr,
+    displayText: `${minStr} – ${maxStr} (3–5 Business Days)`,
+  };
+}
+

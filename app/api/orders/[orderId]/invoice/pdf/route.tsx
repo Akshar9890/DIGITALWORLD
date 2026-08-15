@@ -3,6 +3,8 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { InvoicePDF } from "@/components/invoice/InvoicePDF";
 import { getOrCreateInvoice } from "@/lib/invoice";
 
+import { getEstimatedDeliveryRange } from "@/lib/utils";
+
 export const runtime = "nodejs";
 
 /**
@@ -24,12 +26,15 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    const delivery = getEstimatedDeliveryRange(invoice.order.createdAt);
+
     const buffer = await renderToBuffer(
       <InvoicePDF
         data={{
           invoiceNumber: invoice.invoiceNumber,
           orderNumber: invoice.order.orderNumber,
           issuedAt: invoice.issuedAt,
+          estimatedDelivery: delivery.displayText,
 
           sellerName: invoice.sellerName,
           sellerGstin: invoice.sellerGstin,
