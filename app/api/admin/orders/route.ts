@@ -3,8 +3,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { OrderStatus } from "@prisma/client";
 
-
 export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   try {
     const session = await auth();
@@ -14,8 +14,22 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status") as OrderStatus | null;
+    const includePending = searchParams.get("includePending") === "true";
 
-    const where = status ? { status } : {};
+    // By default, filter out pending_payment attempts and only show successful paid orders
+    let where: any;
+    if (status) {
+      where = { status };
+    } else if (includePending) {
+      where = {};
+    } else {
+      where = {
+        OR: [
+          { paymentStatus: "captured" },
+          { status: { in: ["processing", "shipped", "delivered", "completed"] } },
+        ],
+      };
+    }
 
     const orders = await db.order.findMany({
       where,
@@ -23,7 +37,7 @@ export async function GET(req: Request) {
       include: {
         user: { select: { name: true, email: true } },
         shippingAddress: { select: { name: true, line1: true, city: true, state: true, pincode: true } },
-        payment: { select: { method: true } },
+        payment: { select: { method: true, status: true } },
         items: {
           include: { product: { select: { name: true, slug: true } } },
         },
@@ -38,6 +52,7 @@ export async function GET(req: Request) {
       customerEmail: o.user?.email ?? "—",
       grandTotal: Number(o.grandTotal),
       status: o.status,
+      paymentStatus: o.paymentStatus,
       createdAt: o.createdAt.toISOString(),
       paymentMethod: o.payment?.method ?? null,
       shippingAddress: o.shippingAddress
