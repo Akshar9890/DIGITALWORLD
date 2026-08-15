@@ -1,6 +1,5 @@
 "use client";
 
-export const dynamic = "force-dynamic";
 
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -86,6 +85,16 @@ export default function CartPage() {
     },
   });
 
+  // Fetch active admin shipping rules
+  const { data: shippingRules } = useQuery({
+    queryKey: ["shipping-rules"],
+    queryFn: async () => {
+      const res = await fetch("/api/shipping-rules");
+      if (!res.ok) return undefined;
+      return res.json();
+    },
+  });
+
   const handleUpdateQty = (productId: string, currentQty: number, change: number) => {
     const newQty = currentQty + change;
     if (newQty < 1) return;
@@ -112,15 +121,6 @@ export default function CartPage() {
     );
   }
 
-  // Fetch active admin shipping rules
-  const { data: shippingRules } = useQuery({
-    queryKey: ["shipping-rules"],
-    queryFn: async () => {
-      const res = await fetch("/api/shipping-rules");
-      if (!res.ok) return undefined;
-      return res.json();
-    },
-  });
 
   const isEmpty = !cart || cart.items.length === 0;
 
