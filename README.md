@@ -22,6 +22,11 @@
 4. [Complete Repository Structure](#4-complete-repository-structure)
 5. [Technology Stack & Core Dependencies](#5-technology-stack--core-dependencies)
 6. [Database Schema & Data Models (Prisma)](#6-database-schema--data-models-prisma)
+   - [6.1 Visual Database Entity Relationship Diagram & Tracking Lifecycle](#61-visual-database-entity-relationship-diagram--tracking-lifecycle)
+   - [6.2 Interactive Schema Entity Relationship Model (Mermaid ERD)](#62-interactive-schema-entity-relationship-model-mermaid-erd)
+   - [6.3 Schema Legend & Field Attributes](#63-schema-legend--field-attributes)
+   - [6.4 19-State Shipment Status Progression Flow](#64-19-state-shipment-status-progression-flow)
+   - [6.5 Production Prisma Schema Models](#65-production-prisma-schema-models)
 7. [Core Algorithms & Mathematical Logic](#7-core-algorithms--mathematical-logic)
    - [7.1 Dual-Persona Server-Side Price Resolution Engine (`resolvePrice`)](#71-dual-persona-server-side-dynamic-price-resolution-engine-resolveprice)
    - [7.2 Dynamic Quantity Tier Matching Algorithm (`getPriceForQuantity`)](#72-dynamic-quantity-tier-matching-algorithm-getpriceforquantity)
@@ -264,7 +269,118 @@ digitalworld-app/
 
 ## 6. Database Schema & Data Models (Prisma)
 
-### Key Schema Models
+### 6.1 Visual Database Entity Relationship Diagram & Tracking Lifecycle
+
+<p align="center">
+  <img src="./public/images/database-erd-shipment-flow.png" alt="DigitalWorld Database ERD and Shipment Lifecycle Architecture" width="100%" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12);" />
+</p>
+
+### 6.2 Interactive Schema Entity Relationship Model (Mermaid ERD)
+
+```mermaid
+erDiagram
+    ORDER ||--o{ SHIPMENT : "1 Order can have many Shipments (1 : N)"
+    SHIPMENT ||--o{ SHIPMENT_TRACKING_EVENT : "1 Shipment can have many Tracking Events (1 : N)"
+
+    ORDER {
+        String id PK "Primary Key (cuid)"
+        String orderNumber UK "Unique Order Identifier"
+        String userId "Nullable Customer ID"
+        OrderStatus status "Enum (pending_payment, confirmed, processing, shipped, delivered, cancelled)"
+        PaymentStatus paymentStatus "Enum (initiated, paid, failed, refunded)"
+        Decimal subtotal "Decimal(10,2) Pre-tax items total"
+        Decimal shippingAmount "Decimal(10,2) Default: 0"
+        Decimal taxableAmount "Decimal(10,2) Taxable base"
+        Boolean isSameState "Default: true (Intra vs Inter-State)"
+        Decimal cgstAmount "Decimal(10,2) Default: 0 (Central GST 9%)"
+        Decimal sgstAmount "Decimal(10,2) Default: 0 (State GST 9%)"
+        Decimal igstAmount "Decimal(10,2) Default: 0 (Integrated GST 18%)"
+        Decimal totalGST "Decimal(10,2) Total Goods & Shipping GST"
+        Decimal grandTotal "Decimal(10,2) Total Payable Amount"
+        DateTime createdAt "Default: now()"
+        DateTime updatedAt "Timestamp"
+    }
+
+    SHIPMENT {
+        String id PK "Primary Key (cuid)"
+        String orderId FK "Foreign Key -> Order.id"
+        String provider "Courier Provider (e.g. shiprocket, delhivery, manual)"
+        String courierName "Courier Carrier (e.g. Delhivery Surface, Blue Dart, Manual)"
+        String awbNumber UK "Air Waybill Number (Unique)"
+        ShipmentStatus status "Enum (Current Shipment Status)"
+        Decimal shippingCost "Decimal(10,2) Default: 0"
+        String trackingUrl "Nullable Tracking Page URL"
+        DateTime estimatedDeliveryDate "Nullable Expected Delivery Date"
+        DateTime createdAt "Default: now()"
+        DateTime updatedAt "Timestamp"
+    }
+
+    SHIPMENT_TRACKING_EVENT {
+        String id PK "Primary Key (cuid)"
+        String shipmentId FK "Foreign Key -> Shipment.id"
+        ShipmentStatus status "Enum: Status at this milestone"
+        String location "Nullable Event Geographic Location"
+        String description "Nullable Human-readable Status Message"
+        String externalStatus "Nullable Raw Courier API String"
+        DateTime timestamp "Default: now() When Event Occurred"
+    }
+```
+
+### 6.3 Schema Legend & Field Attributes
+
+| Symbol / Icon | Attribute Type | Description |
+|---|---|---|
+| 🔑 `PK` | **Primary Key** | Unique system identifier for the record (`cuid`) |
+| 🔗 `FK` | **Foreign Key** | Relational link to parent model (`onDelete: Cascade` where applicable) |
+| 🌟 `UK` | **Unique Field** | Value must be unique across the entire database (`orderNumber`, `awbNumber`) |
+| 🏷️ `Enum` | **Enum Type** | Standardized enumerated state machine value |
+| 🕒 `DateTime` | **Timestamp Field** | Automated `createdAt` and `updatedAt` tracking |
+
+---
+
+### 6.4 19-State Shipment Status Progression Flow
+
+```mermaid
+flowchart LR
+    subgraph TypicalProgression ["🟢 Typical Shipment Progression (1 - 11)"]
+        direction LR
+        S1["① ORDER_PLACED"] --> S2["② PAYMENT_CONFIRMED"]
+        S2 --> S3["③ PROCESSING"]
+        S3 --> S4["④ PACKED"]
+        S4 --> S5["⑤ SHIPMENT_CREATED"]
+        S5 --> S6["⑥ PICKUP_SCHEDULED"]
+        S6 --> S7["⑦ PICKED_UP"]
+        S7 --> S8["⑧ IN_TRANSIT"]
+        S8 --> S9["⑨ REACHED_DESTINATION"]
+        S9 --> S10["⑩ OUT_FOR_DELIVERY"]
+        S10 --> S11["⑪ DELIVERED"]
+    end
+
+    subgraph ExceptionFlows ["🔴 Exception & Return Flows (12 - 19)"]
+        direction TB
+        E1["⑫ DELAYED"]
+        E2["⑬ NDR (Delivery Attempt Failed)"]
+        E3["⑭ RTO_INITIATED"]
+        E4["⑮ RTO_IN_TRANSIT"]
+        E5["⑯ RTO_DELIVERED"]
+        E6["⑰ LOST"]
+        E7["⑱ DAMAGED"]
+        E8["⑲ CANCELLED"]
+    end
+
+    S10 -.-> E2
+    E2 -.-> S10
+    E2 -.-> E3
+    E3 --> E4 --> E5
+    S8 -.-> E1
+    S8 -.-> E6
+    S8 -.-> E7
+    S1 -.-> E8
+```
+
+---
+
+### 6.5 Production Prisma Schema Models
 
 ```prisma
 enum ShipmentStatus {
@@ -287,6 +403,22 @@ enum ShipmentStatus {
   LOST
   DAMAGED
   CANCELLED
+}
+
+enum OrderStatus {
+  pending_payment
+  confirmed
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum PaymentStatus {
+  initiated
+  paid
+  failed
+  refunded
 }
 
 model Order {
