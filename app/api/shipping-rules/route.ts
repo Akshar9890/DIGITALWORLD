@@ -9,7 +9,15 @@ export async function GET() {
       where: { id: "default-shipping" },
     });
 
-    let config = {
+    const defaultConfig = {
+      calculationMode: "weight",
+      chargeUpTo1Kg: 100,
+      chargeUpTo2Kg: 200,
+      chargeUpTo3Kg: 300,
+      chargeUpTo5Kg: 500,
+      chargeAbove5KgPerKg: 100,
+      ratePerKg: 100,
+      freeShippingAboveAmount: 15000,
       charge1to10: 100,
       charge11to20: 200,
       charge21to30: 300,
@@ -19,23 +27,27 @@ export async function GET() {
     if (rule?.notes) {
       try {
         const parsed = JSON.parse(rule.notes);
-        config = {
-          charge1to10: Number(parsed.charge1to10 ?? 100),
-          charge11to20: Number(parsed.charge11to20 ?? 200),
-          charge21to30: Number(parsed.charge21to30 ?? 300),
-          freeThresholdQty: Number(parsed.freeThresholdQty ?? 31),
-        };
+        return NextResponse.json({
+          ...defaultConfig,
+          ...parsed,
+        });
       } catch {
         // fallback
       }
-    } else if (rule?.minCharge) {
-      config.charge1to10 = Number(rule.minCharge);
     }
 
-    return NextResponse.json(config);
+    return NextResponse.json(defaultConfig);
   } catch (error) {
     console.error("Public shipping-rules GET error:", error);
     return NextResponse.json({
+      calculationMode: "weight",
+      chargeUpTo1Kg: 100,
+      chargeUpTo2Kg: 200,
+      chargeUpTo3Kg: 300,
+      chargeUpTo5Kg: 500,
+      chargeAbove5KgPerKg: 100,
+      ratePerKg: 100,
+      freeShippingAboveAmount: 15000,
       charge1to10: 100,
       charge11to20: 200,
       charge21to30: 300,

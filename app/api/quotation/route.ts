@@ -6,11 +6,13 @@ import { db } from "@/lib/db";
 import { z } from "zod";
 import { getPriceForQuantity, getStandardPrice } from "@/lib/pricing";
 import { getCourierCharge, getGSTAmount, GST_RATE } from "@/lib/shipping";
-import { generateQuotationNumber } from "@/lib/utils";
+import { generateQuotationNumber, formatINR } from "@/lib/utils";
 
 const quotationSchema = z.object({
   productId: z.string().min(1),
   quantity: z.number().int().min(1),
+  customUnitPrice: z.number().min(1).optional(),
+  includeGst: z.boolean().default(true),
   customerName: z.string().min(2, "Please enter your name"),
   customerPhone: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile number required"),
   customerEmail: z.string().email("Valid email required"),
@@ -23,12 +25,7 @@ const quotationSchema = z.object({
 });
 
 /**
- * POST /api/quotation — Generate an instant B2C quotation.
- *
- * Pricing is NEVER taken from the client. The server loads the product's
- * tier table and resolves the unit price with the SAME function used by
- * cart & checkout (getPriceForQuantity), so a quotation always matches
- * what the customer will pay at checkout.
+ * POST /api/quotation — Generate an instant quotation with optional custom price & GST toggle.
  */
 export async function POST(req: Request) {
   try {
@@ -41,7 +38,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const { productId, quantity, customerName, customerPhone, customerEmail, companyName, gstin, deliveryAddress, pincode, state, notes } = result.data;
+    const {
+      productId,
+      quantity,
+      customUnitPrice,
+      includeGst,
+      customerName,
+      customerPhone,
+      customerEmail,
+      companyName,
+      gstin,
+      deliveryAddress,
+      pincode,
+      state,
+      notes,
+    } = result.data;
 
     // 1. Product must exist and be active
     const product = await db.product.findUnique({
@@ -52,7 +63,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Product unavailable" }, { status: 400 });
     }
 
-    // 2. Resolve pricing server-side (single source of truth)
+    // 2. Resolve pricing server-side
     const productPrices = await db.productPrice.findMany({
       where: { productId },
       include: { tier: true },
@@ -77,11 +88,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Could not resolve pricing" }, { status: 400 });
     }
 
-    const unitPrice = tier.pricePerUnit;
-    const standardPrice = getStandardPrice(tierTable) ?? unitPrice;
+    // Customer target price or default tier price
+    const tierUnitPrice = tier.pricePerUnit;
+    const isCustom = customUnitPrice !== undefined && customUnitPrice > 0;
+    const unitPrice = isCustom ? Number(customUnitPrice) : tierUnitPrice;
+
+    const standardPrice = getStandardPrice(tierTable) ?? tierUnitPrice;
     const subtotal = Math.round(unitPrice * quantity * 100) / 100;
-    const gstAmount = getGSTAmount(subtotal);
-    const courier = getCourierCharge(product.weightGrams * quantity, quantity);
+    const effectiveGstRate = includeGst ? GST_RATE : 0;
+    const gstAmount = includeGst ? getGSTAmount(subtotal) : 0;
+
+    // Fetch active shipping rule if available
+    const shippingRule = await db.shippingRule.findUnique({
+      where: { id: "default-shipping" },
+    });
+    let shippingConfig;
+    if (shippingRule?.notes) {
+      try {
+        shippingConfig = JSON.parse(shippingRule.notes);
+      } catch {
+        // fallback
+      }
+    }
+
+    const courier = getCourierCharge(product.weightGrams * quantity, quantity, shippingConfig, subtotal);
     const grandTotal = Math.round((subtotal + gstAmount + courier.amount) * 100) / 100;
 
     // 3. Next quotation number for this year
@@ -103,7 +133,20 @@ export async function POST(req: Request) {
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + 30);
 
-    // 4. Save (optional auth — guests can quote too)
+    const appliedTierName = isCustom
+      ? `Custom Target Price (Requested: ${formatINR(unitPrice)})`
+      : tier.tierName;
+
+    // Compile customer requirement notes
+    const combinedNotes = [
+      notes,
+      isCustom ? `[Customer Target Rate: ${formatINR(unitPrice)}/PCS]` : null,
+      !includeGst ? `[Tax Preference: Without GST (0%)]` : `[Tax Preference: With 18% GST]`,
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    // 4. Save quotation
     const session = await auth();
     const quotation = await db.quotation.create({
       data: {
@@ -115,9 +158,9 @@ export async function POST(req: Request) {
         quantity,
         unitPrice,
         standardPrice,
-        appliedTierName: tier.tierName,
+        appliedTierName,
         subtotal,
-        gstRate: GST_RATE,
+        gstRate: effectiveGstRate,
         gstAmount,
         courierCharge: courier.amount,
         grandTotal,
@@ -129,7 +172,7 @@ export async function POST(req: Request) {
         deliveryAddress: deliveryAddress || null,
         pincode,
         state: state || null,
-        notes: notes || null,
+        notes: combinedNotes || null,
         status: "open",
         validUntil,
       },

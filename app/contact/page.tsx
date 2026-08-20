@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Mail, Phone, MapPin, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 const contactSchema = z.object({
   name: z.string().min(2, "Name is required"),
@@ -25,10 +26,15 @@ export default function ContactPage() {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     reset,
     formState: { errors },
   } = useForm<ContactForm>({
     resolver: zodResolver(contactSchema),
+    defaultValues: {
+      subject: "",
+    },
   });
 
   const onSubmit = async (data: ContactForm) => {
@@ -194,19 +200,20 @@ export default function ContactPage() {
                       {errors.phone && <span className="input-error">{errors.phone.message}</span>}
                     </div>
                     <div>
-                      <label className="input-label">Subject</label>
-                      <select
-                        {...register("subject")}
-                        className={`input-field bg-surface-container ${errors.subject ? "border-status-error" : ""}`}
-                      >
-                        <option value="">Select a topic...</option>
-                        <option value="product_enquiry">Product Enquiry</option>
-                        <option value="bulk_order">Bulk / Wholesale Order</option>
-                        <option value="technical_support">Technical Support</option>
-                        <option value="partnership">Business Partnership</option>
-                        <option value="other">Other</option>
-                      </select>
-                      {errors.subject && <span className="input-error">{errors.subject.message}</span>}
+                      <CustomSelect
+                        label="Subject"
+                        placeholder="Select a topic..."
+                        value={watch("subject") || ""}
+                        onChange={(val) => setValue("subject", val, { shouldValidate: true })}
+                        error={errors.subject?.message}
+                        options={[
+                          { value: "product_enquiry", label: "Product Enquiry" },
+                          { value: "bulk_order", label: "Bulk / Wholesale Order" },
+                          { value: "technical_support", label: "Technical Support" },
+                          { value: "partnership", label: "Business Partnership" },
+                          { value: "other", label: "Other" },
+                        ]}
+                      />
                     </div>
                   </div>
 

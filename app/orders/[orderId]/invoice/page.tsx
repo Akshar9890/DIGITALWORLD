@@ -273,7 +273,7 @@ export default async function InvoicePage({
             )}
 
             <div className="flex justify-between py-1 border-b border-outline-variant/10 print-border-gray">
-              <span className="text-slate-gray print-text-muted">Shipping / Courier</span>
+              <span className="text-slate-gray print-text-muted">Shipping Charge</span>
               <span className="text-white print-text-black">
                 {Number(invoice.shippingValue) > 0
                   ? formatINR(Number(invoice.shippingValue))

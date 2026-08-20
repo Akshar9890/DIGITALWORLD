@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { z } from "zod";
@@ -82,7 +83,71 @@ export async function PUT(
       data: updateData,
     });
 
-    return NextResponse.json(order);
+    const targetStatus = result.data.status;
+    const shipment = await db.shipment.findFirst({
+      where: { orderId: order.id },
+    });
+
+    let updatedShipment = shipment;
+
+    if (shipment) {
+      if (targetStatus === "delivered" && shipment.status !== "DELIVERED") {
+        updatedShipment = await db.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "DELIVERED" },
+        });
+
+        await db.shipmentTrackingEvent.create({
+          data: {
+            shipmentId: shipment.id,
+            provider: shipment.provider,
+            courier: shipment.courierName,
+            awbNumber: shipment.awbNumber,
+            externalStatus: "DELIVERED",
+            internalStatus: "DELIVERED",
+            location: "Destination Facility",
+            description: "Package successfully delivered to recipient.",
+            eventTimestamp: new Date(),
+          },
+        });
+      } else if (targetStatus === "shipped" && shipment.status === "SHIPMENT_CREATED") {
+        updatedShipment = await db.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "IN_TRANSIT" },
+        });
+
+        await db.shipmentTrackingEvent.create({
+          data: {
+            shipmentId: shipment.id,
+            provider: shipment.provider,
+            courier: shipment.courierName,
+            awbNumber: shipment.awbNumber,
+            externalStatus: "IN_TRANSIT",
+            internalStatus: "IN_TRANSIT",
+            location: "Logistics Hub",
+            description: "Shipment in transit to destination station.",
+            eventTimestamp: new Date(),
+          },
+        });
+      } else if (targetStatus === "cancelled" && shipment.status !== "CANCELLED") {
+        updatedShipment = await db.shipment.update({
+          where: { id: shipment.id },
+          data: { status: "CANCELLED" },
+        });
+      }
+    }
+
+    try {
+      revalidatePath("/admin/orders");
+      revalidatePath("/account/orders");
+      revalidatePath(`/account/orders/${order.id}`);
+      revalidatePath(`/account/orders/${order.orderNumber}`);
+      revalidatePath("/track-order");
+    } catch (e) {
+      console.warn("revalidatePath error:", e);
+    }
+
+    return NextResponse.json({ ...order, shipment: updatedShipment });
   } catch (error) {
     console.error("Admin order PUT error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

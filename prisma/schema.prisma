@@ -476,6 +476,7 @@ model Order {
   items             OrderItem[]
   payment           Payment?
   invoice           Invoice?
+  shipments         Shipment[]
 
   @@map("orders")
 }
@@ -615,3 +616,91 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+// ─── Shipping & Live Tracking ────────────────────────────────────────────────
+
+enum ShipmentStatus {
+  ORDER_PLACED
+  PAYMENT_CONFIRMED
+  PROCESSING
+  PACKED
+  SHIPMENT_CREATED
+  PICKUP_SCHEDULED
+  PICKED_UP
+  IN_TRANSIT
+  REACHED_DESTINATION
+  OUT_FOR_DELIVERY
+  DELIVERED
+  DELIVERY_ATTEMPTED
+  DELAYED
+  NDR
+  RTO_INITIATED
+  RTO_IN_TRANSIT
+  RTO_DELIVERED
+  CANCELLED
+  LOST
+  DAMAGED
+}
+
+model Shipment {
+  id                    String                 @id @default(cuid())
+  orderId               String
+  provider              String                 @default("manual") // shiprocket | delhivery | manual
+  providerShipmentId    String?
+  courierId             String?
+  courierName           String                 // e.g. "Delhivery", "Blue Dart", "DTDC"
+  courierCode           String?
+  awbNumber             String                 @unique // Tracking Number
+  trackingUrl           String?
+  status                ShipmentStatus         @default(SHIPMENT_CREATED)
+  estimatedDeliveryDate DateTime?
+  pickupDate            DateTime?
+  weightGrams           Int                    @default(500)
+  lengthCm              Float                  @default(15)
+  widthCm               Float                  @default(10)
+  heightCm              Float                  @default(10)
+  shippingCost          Decimal                @default(0) @db.Decimal(10, 2)
+  labelUrl              String?
+  manifestUrl           String?
+  notes                 String?                @db.Text
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  order                 Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  trackingEvents        ShipmentTrackingEvent[]
+
+  @@map("shipments")
+}
+
+model ShipmentTrackingEvent {
+  id             String         @id @default(cuid())
+  shipmentId     String
+  provider       String         // shiprocket | delhivery | manual
+  courier        String
+  awbNumber      String
+  externalStatus String?        // raw provider status e.g. "OUT FOR DEL"
+  internalStatus ShipmentStatus // normalized status
+  location       String?
+  description    String?        @db.Text
+  eventTimestamp DateTime       @default(now())
+  rawPayload     Json?
+  createdAt      DateTime       @default(now())
+
+  shipment       Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_tracking_events")
+}
+
+model ShippingProviderConfig {
+  id          String   @id @default(cuid())
+  providerKey String   @unique // shiprocket | delhivery | manual
+  name        String
+  isEnabled   Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  settings    Json?    // server-side configuration metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("shipping_provider_configs")
+}
+

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
+import { Prisma, PaymentStatus, OrderStatus } from "@prisma/client";
+
 export const dynamic = "force-dynamic";
 
 export async function GET() {
@@ -13,10 +15,10 @@ export async function GET() {
     }
 
     // Filter for successful/captured paid orders only
-    const paidOrdersWhere = {
+    const paidOrdersWhere: Prisma.OrderWhereInput = {
       OR: [
-        { paymentStatus: "captured" },
-        { status: { in: ["processing", "shipped", "delivered"] } },
+        { paymentStatus: "captured" as PaymentStatus },
+        { status: { in: ["processing", "shipped", "delivered"] as OrderStatus[] } },
       ],
     };
 

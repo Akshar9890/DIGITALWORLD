@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Shield, Building, FileText, CheckCircle2, User, Phone, Mail } from "lucide-react";
 import { isValidGSTIN, isValidPincode, isValidPhone } from "@/lib/utils";
+import { PincodeInput, type PincodeResult } from "@/components/ui/PincodeInput";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 const wholesaleSchema = z.object({
   companyName: z.string().min(2, "Company Name is required"),
@@ -44,10 +46,26 @@ export default function WholesalePage() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<WholesaleForm>({
     resolver: zodResolver(wholesaleSchema),
+    defaultValues: {
+      state: "",
+      city: "",
+      pincode: "",
+    },
   });
+
+  const selectedState = watch("state") || "";
+  const selectedCity = watch("city") || "";
+  const pincodeVal = watch("pincode") || "";
+
+  const handlePincodeResolved = (result: PincodeResult) => {
+    setValue("city", result.city, { shouldValidate: true });
+    setValue("state", result.state, { shouldValidate: true });
+    setValue("pincode", result.pincode, { shouldValidate: true });
+  };
 
   // Pre-fill fields from logged-in session
   useEffect(() => {
@@ -317,69 +335,75 @@ export default function WholesalePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="input-label">Business Type *</label>
-                  <select 
-                    {...register("businessType")}
-                    className={`input-field bg-surface-container ${errors.businessType ? 'border-status-error' : ''}`}
-                  >
-                    <option value="">Select type...</option>
-                    <option value="distributor">Distributor / Wholesaler</option>
-                    <option value="contractor">Electrical/Fire Contractor</option>
-                    <option value="facility_manager">Facility Management</option>
-                    <option value="end_user">Industrial End-User</option>
-                    <option value="other">Other</option>
-                  </select>
-                  {errors.businessType && <span className="input-error">{errors.businessType.message}</span>}
+                  <CustomSelect
+                    label="Business Type"
+                    required
+                    placeholder="Select type..."
+                    value={watch("businessType") || ""}
+                    onChange={(val) => setValue("businessType", val, { shouldValidate: true })}
+                    error={errors.businessType?.message}
+                    options={[
+                      { value: "distributor", label: "Distributor / Wholesaler" },
+                      { value: "contractor", label: "Electrical/Fire Contractor" },
+                      { value: "facility_manager", label: "Facility Management" },
+                      { value: "end_user", label: "Industrial End-User" },
+                      { value: "other", label: "Other" },
+                    ]}
+                  />
                 </div>
 
                 <div>
-                  <label className="input-label">Expected Volume (Annual) *</label>
-                  <select 
-                    {...register("expectedVolume")}
-                    className={`input-field bg-surface-container ${errors.expectedVolume ? 'border-status-error' : ''}`}
-                  >
-                    <option value="">Select volume...</option>
-                    <option value="10-49">10 - 49 units</option>
-                    <option value="50-99">50 - 99 units</option>
-                    <option value="100-499">100 - 499 units</option>
-                    <option value="500-999">500 - 999 units</option>
-                    <option value="1000+">1,000+ units</option>
-                  </select>
-                  {errors.expectedVolume && <span className="input-error">{errors.expectedVolume.message}</span>}
+                  <CustomSelect
+                    label="Expected Volume (Annual)"
+                    required
+                    placeholder="Select volume..."
+                    value={watch("expectedVolume") || ""}
+                    onChange={(val) => setValue("expectedVolume", val, { shouldValidate: true })}
+                    error={errors.expectedVolume?.message}
+                    options={[
+                      { value: "10-49", label: "10 - 49 units" },
+                      { value: "50-99", label: "50 - 99 units" },
+                      { value: "100-499", label: "100 - 499 units" },
+                      { value: "500-999", label: "500 - 999 units" },
+                      { value: "1000+", label: "1,000+ units" },
+                    ]}
+                  />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
                   <label className="input-label">City *</label>
-                  <input 
+                  <input
                     {...register("city")}
                     className={`input-field ${errors.city ? 'border-status-error' : ''}`}
                     placeholder="e.g. Vadodara"
                   />
                   {errors.city && <span className="input-error">{errors.city.message}</span>}
                 </div>
-                
-                <div className="md:col-span-1">
+
+                <div>
                   <label className="input-label">State *</label>
-                  <input 
+                  <input
                     {...register("state")}
                     className={`input-field ${errors.state ? 'border-status-error' : ''}`}
                     placeholder="e.g. Gujarat"
                   />
                   {errors.state && <span className="input-error">{errors.state.message}</span>}
                 </div>
+              </div>
 
-                <div className="md:col-span-1">
-                  <label className="input-label">Pincode *</label>
-                  <input 
-                    {...register("pincode")}
-                    maxLength={6}
-                    className={`input-field ${errors.pincode ? 'border-status-error' : ''}`}
-                    placeholder="390021"
-                  />
-                  {errors.pincode && <span className="input-error">{errors.pincode.message}</span>}
-                </div>
+              {/* Pincode Lookup */}
+              <div>
+                <PincodeInput
+                  label="Pincode"
+                  required
+                  value={pincodeVal}
+                  onChange={(val) => setValue("pincode", val, { shouldValidate: val.length === 6 })}
+                  onResolved={handlePincodeResolved}
+                  error={errors.pincode?.message}
+                  placeholder="Enter 6-digit pincode (e.g. 390021)"
+                />
               </div>
 
               {submitError && (

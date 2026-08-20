@@ -212,10 +212,10 @@ export function QuotationView({ quotation: q, showActions = true }: Props) {
             </div>
             <div className="flex justify-between text-[#374151]">
               <span>GST ({gstPct}%)</span>
-              <span>{formatINR(q.gstAmount)}</span>
+              <span>{q.gstAmount > 0 ? formatINR(q.gstAmount) : "₹0.00 (Exempt / Excl.)"}</span>
             </div>
             <div className="flex justify-between text-[#374151] border-b border-outline-variant/30 pb-3">
-              <span>Courier Charges</span>
+              <span>Shipping Charge</span>
               <span>{q.courierCharge > 0 ? formatINR(q.courierCharge) : "FREE"}</span>
             </div>
             <div className="flex justify-between items-center bg-primary-container text-white rounded-lg px-4 py-3 mt-1">

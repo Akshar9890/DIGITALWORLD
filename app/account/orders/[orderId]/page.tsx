@@ -14,7 +14,10 @@ import {
   MapPin,
   CreditCard,
   Check,
+  ReceiptText,
+  Download,
 } from "lucide-react";
+import ShipmentTrackerCard from "@/components/shipping/ShipmentTrackerCard";
 
 const statusSteps = [
   { key: "pending_payment", label: "Order Placed", icon: Clock },
@@ -54,49 +57,82 @@ export default async function OrderDetailPage({
       shippingAddress: true,
       payment: true,
       invoice: true,
+      shipments: {
+        include: {
+          trackingEvents: { orderBy: { eventTimestamp: "desc" } },
+        },
+      },
     },
   });
 
   if (!order) notFound();
 
   const currentStep = getStatusIndex(order.status);
+  const rawShipment = order.shipments?.[0];
+  const activeShipment = rawShipment
+    ? {
+        ...rawShipment,
+        shippingCost: rawShipment.shippingCost ? Number(rawShipment.shippingCost) : 0,
+      }
+    : null;
   const isPaid = order.paymentStatus === "captured" || order.status !== "pending_payment";
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center gap-4">
-        <Link
-          href="/account/orders"
-          className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface-container text-slate-gray hover:text-white transition-colors"
-        >
-          <ArrowLeft size={18} />
-        </Link>
+    <div className="flex flex-col gap-8 max-w-4xl mx-auto">
+      {/* Back button */}
+      <Link
+        href="/account/orders"
+        className="flex items-center gap-2 text-sm text-slate-gray hover:text-white transition-colors"
+      >
+        <ArrowLeft size={16} /> Back to Orders
+      </Link>
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="font-headline-md text-white">Order {order.orderNumber}</h2>
-            {isPaid && (
-              <span className="bg-status-success/20 text-status-success text-xs px-2.5 py-1 rounded-full font-bold border border-status-success/30 flex items-center gap-1">
-                <Check size={12} /> Payment Confirmed
-              </span>
-            )}
+            <h1 className="font-headline-md text-white">{order.orderNumber}</h1>
+            <span className="badge-info text-xs">
+              {order.status === "processing" ? "Paid & Processing" : order.status}
+            </span>
           </div>
-          <p className="text-xs text-slate-gray mt-0.5">
+          <p className="text-xs text-slate-gray mt-1">
             Placed on{" "}
-            {order.createdAt.toLocaleDateString("en-IN", {
+            {new Date(order.createdAt).toLocaleDateString("en-IN", {
               day: "numeric",
               month: "long",
               year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
             })}
           </p>
         </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            href={`/orders/${order.id}/invoice`}
+            className="btn-secondary text-xs py-2 px-4 flex items-center gap-2"
+          >
+            <ReceiptText size={14} /> View Invoice
+          </Link>
+          <a
+            href={`/api/orders/${order.id}/invoice/pdf`}
+            download={`Invoice-${order.orderNumber}.pdf`}
+            className="btn-primary text-xs py-2 px-4 flex items-center gap-2"
+          >
+            <Download size={14} /> Download PDF
+          </a>
+        </div>
       </div>
 
-      {/* Payment Confirmation Banner */}
-      {isPaid && (
-        <div className="bento-card p-4 border-status-success/30 bg-status-success/10 flex items-center gap-3">
-          <CheckCircle2 size={24} className="text-status-success shrink-0" />
+      {/* Payment Captured Notice Banner */}
+      {order.paymentStatus === "captured" && (
+        <div className="bg-primary-container/10 border border-primary-container/30 rounded-xl p-4 flex items-start gap-3">
+          <CheckCircle2 size={20} className="text-status-success shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-white">Payment Received Successfully!</p>
+            <span className="text-xs font-bold text-white uppercase tracking-wider block">
+              Payment Confirmed (₹{Number(order.grandTotal).toLocaleString("en-IN")})
+            </span>
             <p className="text-xs text-on-surface-variant">
               Your payment has been captured via Razorpay. Our warehouse team is now packing and preparing your items for shipment.
             </p>
@@ -104,69 +140,53 @@ export default async function OrderDetailPage({
         </div>
       )}
 
-      {/* Status Tracker */}
-      <div className="bento-card p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="font-headline-sm text-white">Fulfillment Status</h3>
-          <span className="text-xs font-bold text-tertiary uppercase tracking-wider">
-            {order.status === "processing" ? "Paid & Packing" : order.status}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between relative">
-          {/* Progress line */}
-          <div className="absolute top-5 left-0 right-0 h-0.5 bg-surface-container-high" />
-          <div
-            className="absolute top-5 left-0 h-0.5 bg-status-success transition-all"
-            style={{ width: `${(currentStep / (statusSteps.length - 1)) * 100}%` }}
-          />
-
-          {statusSteps.map((step, index) => {
-            const isCompleted = index <= currentStep;
-            const isCurrent = index === currentStep;
-            return (
-              <div key={step.key} className="relative z-10 flex flex-col items-center gap-2">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${
-                    isCompleted
-                      ? "bg-status-success/20 border-status-success text-status-success"
-                      : "bg-surface-container border-outline-variant/30 text-slate-gray"
-                  } ${isCurrent ? "ring-2 ring-status-success/30" : ""}`}
-                >
-                  <step.icon size={18} />
-                </div>
-                <span
-                  className={`text-[11px] font-label-caps tracking-wider text-center ${
-                    isCompleted ? "text-on-surface font-bold" : "text-slate-gray"
-                  }`}
-                >
-                  {step.label}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {order.trackingNumber && (
-          <div className="mt-6 pt-4 border-t border-outline-variant/20 flex items-center gap-3">
-            <Truck size={16} className="text-tertiary" />
-            <div>
-              <span className="text-xs text-slate-gray">Tracking Number</span>
-              <p className="text-sm text-white font-bold">{order.trackingNumber}</p>
-            </div>
-            {order.trackingUrl && (
-              <a
-                href={order.trackingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="ml-auto text-sm text-tertiary hover:underline"
-              >
-                Track Shipment
-              </a>
-            )}
+      {/* Live Courier Tracking Tracker */}
+      {activeShipment ? (
+        <ShipmentTrackerCard shipment={activeShipment as any} />
+      ) : (
+        /* Default Preparation Tracker */
+        <div className="bento-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-headline-sm text-white">Fulfillment Status</h3>
+            <span className="text-xs font-bold text-tertiary uppercase tracking-wider">
+              {order.status === "processing" ? "Paid & Packing" : order.status}
+            </span>
           </div>
-        )}
-      </div>
+
+          <div className="flex items-center justify-between relative">
+            <div className="absolute top-5 left-0 right-0 h-0.5 bg-surface-container-high" />
+            <div
+              className="absolute top-5 left-0 h-0.5 bg-status-success transition-all"
+              style={{ width: `${(currentStep / (statusSteps.length - 1)) * 100}%` }}
+            />
+
+            {statusSteps.map((step, index) => {
+              const isCompleted = index <= currentStep;
+              const isCurrent = index === currentStep;
+              return (
+                <div key={step.key} className="relative z-10 flex flex-col items-center gap-2">
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full border-2 transition-colors ${
+                      isCompleted
+                        ? "bg-status-success/20 border-status-success text-status-success"
+                        : "bg-surface-container border-outline-variant/30 text-slate-gray"
+                    } ${isCurrent ? "ring-2 ring-status-success/30" : ""}`}
+                  >
+                    <step.icon size={18} />
+                  </div>
+                  <span
+                    className={`text-[11px] font-label-caps tracking-wider text-center ${
+                      isCompleted ? "text-on-surface font-bold" : "text-slate-gray"
+                    }`}
+                  >
+                    {step.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Order Items */}
       <div className="bento-card p-6">

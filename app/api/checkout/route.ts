@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { resolvePrice } from "@/lib/pricing";
-import { getCourierCharge, getGSTAmount, GST_RATE } from "@/lib/shipping";
-import { computeGST, roundToTwo } from "@/lib/tax";
+import { getCourierCharge, GST_RATE } from "@/lib/shipping";
+import { computeInvoiceTotals, roundToTwo } from "@/lib/tax";
 import { cookies } from "next/headers";
 import Razorpay from "razorpay";
 import { z } from "zod";
@@ -133,28 +133,23 @@ export async function POST(req: Request) {
     let shippingConfig;
     if (shippingRule?.notes) {
       try {
-        const parsed = JSON.parse(shippingRule.notes);
-        shippingConfig = {
-          charge1to10: Number(parsed.charge1to10 ?? 100),
-          charge11to20: Number(parsed.charge11to20 ?? 200),
-          charge21to30: Number(parsed.charge21to30 ?? 300),
-          freeThresholdQty: Number(parsed.freeThresholdQty ?? 31),
-        };
+        shippingConfig = JSON.parse(shippingRule.notes);
       } catch {
         // fallback
       }
     }
 
-    const courier = getCourierCharge(totalWeightGrams, totalQuantity, shippingConfig);
-
+    const courier = getCourierCharge(totalWeightGrams, totalQuantity, shippingConfig, subtotal);
     const shippingAmount = courier.amount;
-    const totalGST = getGSTAmount(subtotal);
 
     const sellerState = process.env.BUSINESS_STATE || "Maharashtra";
-    const buyerState = shippingAddress.state;
-    const gst = computeGST(subtotal, sellerState, buyerState, GST_RATE);
+    const buyerState = shippingAddress.state || "Maharashtra";
+
+    // Unified GST Engine (lib/tax.ts) — single source of truth for goods, shipping, and total GST
+    const invoiceTotals = computeInvoiceTotals(subtotal, shippingAmount, sellerState, buyerState, GST_RATE);
+    const { goods, grandTotal } = invoiceTotals;
+    const totalGST = goods.totalGST;
     const taxableAmount = roundToTwo(subtotal + shippingAmount);
-    const grandTotal = roundToTwo(subtotal + totalGST + shippingAmount);
 
     // Convert to paise for Razorpay
     const amountInPaise = Math.round(grandTotal * 100);
@@ -191,12 +186,23 @@ export async function POST(req: Request) {
 
     console.log("[Razorpay] Order created:", rzpOrder.id);
 
+    let effectiveUserId = userId;
+    if (!effectiveUserId && shippingAddress.email) {
+      const existingUser = await db.user.findUnique({
+        where: { email: shippingAddress.email.toLowerCase().trim() },
+        select: { id: true },
+      });
+      if (existingUser) {
+        effectiveUserId = existingUser.id;
+      }
+    }
+
     // Create DB Order + Payment in a transaction
     const order = await db.$transaction(async (tx) => {
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
-          userId,
+          userId: effectiveUserId,
           status: "pending_payment",
           paymentStatus: "initiated",
           subtotal,
@@ -204,10 +210,10 @@ export async function POST(req: Request) {
           taxableAmount,
           sellerState,
           buyerState,
-          isSameState: gst.isSameState,
-          cgstAmount: gst.cgstAmount,
-          sgstAmount: gst.sgstAmount,
-          igstAmount: gst.igstAmount,
+          isSameState: goods.isSameState,
+          cgstAmount: goods.cgstAmount,
+          sgstAmount: goods.sgstAmount,
+          igstAmount: goods.igstAmount,
           totalGST,
           grandTotal,
           items: { create: orderItemsData },
@@ -227,7 +233,7 @@ export async function POST(req: Request) {
       // Create the address records (shipping = billing for now)
       const shippingAddressRecord = await tx.address.create({
         data: {
-          userId,
+          userId: effectiveUserId,
           label: "Shipping",
           name: shippingAddress.fullName,
           phone: shippingAddress.phone,

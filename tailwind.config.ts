@@ -81,14 +81,14 @@ const config: Config = {
       },
 
       fontFamily: {
-        "headline-lg": ["var(--font-heading)"],
-        "headline-lg-mobile": ["var(--font-heading)"],
-        "headline-md": ["var(--font-heading)"],
-        "headline-sm": ["var(--font-heading)"],
-        "body-lg": ["var(--font-body)"],
-        "body-md": ["var(--font-body)"],
-        "body-technical": ["var(--font-body)"],
-        "label-caps": ["var(--font-body)"],
+        "headline-lg": ["var(--font-jetbrains)", "ui-monospace", "monospace"],
+        "headline-lg-mobile": ["var(--font-jetbrains)", "ui-monospace", "monospace"],
+        "headline-md": ["var(--font-jetbrains)", "ui-monospace", "monospace"],
+        "headline-sm": ["var(--font-jetbrains)", "ui-monospace", "monospace"],
+        "body-lg": ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        "body-md": ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        "body-technical": ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
+        "label-caps": ["var(--font-jetbrains)", "ui-monospace", "monospace"],
       },
 
       fontSize: {

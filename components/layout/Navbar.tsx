@@ -3,25 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import {
-  ShoppingCart,
-  User as UserIcon,
-  Menu,
-  X,
-  Package,
-  Shield,
-  FileText,
-  Settings,
-  LogOut,
-  Search,
-  ChevronRight,
-  Flame,
-  Phone,
-  Mail,
-} from "lucide-react";
+import { ShoppingCart, User as UserIcon, Menu, X, Package, Shield, FileText, Settings, LogOut, Search, ChevronRight, Flame, Phone, Mail } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MagneticButton } from "@/components/ui/MagneticButton";
+import { MobileBottomSheet } from "@/components/ui/MobileBottomSheet";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -298,68 +284,8 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-            className="overflow-hidden border-b border-outline-variant/30 bg-surface-charcoal/98 backdrop-blur-2xl md:hidden"
-          >
-            <div className="flex flex-col px-6 py-6 gap-5">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  className="font-headline-sm text-lg text-on-surface hover:text-primary transition-colors flex items-center justify-between"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <span>{link.label}</span>
-                  <ChevronRight size={16} className="text-slate-gray" />
-                </Link>
-              ))}
-
-              <hr className="border-outline-variant/20 my-1" />
-
-              <Link href="/quotation" onClick={() => setIsMobileMenuOpen(false)}>
-                <button className="btn-primary w-full gap-2 py-3">
-                  <FileText size={18} /> GET INSTANT QUOTATION
-                </button>
-              </Link>
-
-              {session ? (
-                <div className="flex flex-col gap-3 pt-2">
-                  <Link href="/account/orders" className="flex items-center gap-3 text-sm text-on-surface-variant" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Package size={18} /> My Orders
-                  </Link>
-                  <Link href="/account/quotes" className="flex items-center gap-3 text-sm text-on-surface-variant" onClick={() => setIsMobileMenuOpen(false)}>
-                    <FileText size={18} /> My Quotations
-                  </Link>
-                  {isAdmin && (
-                    <Link href="/admin" className="flex items-center gap-3 text-sm text-status-error" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Settings size={18} /> Admin Dashboard
-                    </Link>
-                  )}
-                  <button onClick={() => signOut()} className="flex items-center gap-3 text-sm text-slate-gray text-left pt-2">
-                    <LogOut size={18} /> Sign Out
-                  </button>
-                </div>
-              ) : (
-                <div className="flex gap-3 pt-2">
-                  <Link href="/login" className="flex-1" onClick={() => setIsMobileMenuOpen(false)}>
-                    <button className="btn-secondary w-full py-2.5 text-xs">SIGN IN</button>
-                  </Link>
-                  <Link href="/register" className="flex-1" onClick={() => setIsMobileMenuOpen(false)}>
-                    <button className="btn-primary w-full py-2.5 text-xs">REGISTER</button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Mobile Bottom Sheet */}
+      <MobileBottomSheet isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
       </motion.header>
     </div>
   );

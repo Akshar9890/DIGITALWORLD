@@ -126,7 +126,9 @@ export default function CartPage() {
 
   const totalQuantity = cart?.items.reduce((acc, i) => acc + i.quantity, 0) || 0;
   const gstAmount = cart ? getGSTAmount(cart.subtotal) : 0;
-  const courier = cart ? getCourierCharge(cart.totalWeightGrams, totalQuantity, shippingRules) : { amount: 0, isFree: true, isBulk: false };
+  const courier = cart
+    ? getCourierCharge(cart.totalWeightGrams, totalQuantity, shippingRules, cart.subtotal)
+    : { amount: 0, isFree: true, isBulk: false };
   const grandTotal = cart ? cart.subtotal + gstAmount + courier.amount : 0;
 
   return (

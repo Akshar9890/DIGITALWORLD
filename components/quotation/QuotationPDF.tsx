@@ -353,7 +353,7 @@ export function QuotationPDF({ data }: { data: QuotationPDFData }) {
               <Text style={styles.totalValue}>{fmt(data.gstAmount)}</Text>
             </View>
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Courier Charges</Text>
+              <Text style={styles.totalLabel}>Shipping Charge</Text>
               <Text style={styles.totalValue}>
                 {data.courierCharge > 0 ? fmt(data.courierCharge) : "FREE"}
               </Text>
@@ -371,7 +371,7 @@ export function QuotationPDF({ data }: { data: QuotationPDFData }) {
           <Text style={styles.termsText}>
             • This quotation is valid for 30 days from the date of issue.
             {"\n"}• Prices are exclusive of GST. GST of {gstPct}% is applied as shown above.
-            {"\n"}• Courier charges are estimates and may vary by delivery pincode. Final charges are confirmed at checkout.
+            {"\n"}• Shipping charges are estimates and may vary by delivery pincode. Final charges are confirmed at checkout.
             {"\n"}• This is an indicative quotation, not an invoice. The final amount is confirmed at checkout.
           </Text>
         </View>

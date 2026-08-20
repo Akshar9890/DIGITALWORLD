@@ -6,10 +6,21 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const updateShippingSchema = z.object({
-  charge1to10: z.number().min(0),
-  charge11to20: z.number().min(0),
-  charge21to30: z.number().min(0),
-  freeThresholdQty: z.number().min(1),
+  calculationMode: z.enum(["weight", "quantity"]).default("weight"),
+  // Weight-based slabs (e.g. 1kg = ₹100, 2kg = ₹200)
+  chargeUpTo1Kg: z.number().min(0).default(100),
+  chargeUpTo2Kg: z.number().min(0).default(200),
+  chargeUpTo3Kg: z.number().min(0).default(300),
+  chargeUpTo5Kg: z.number().min(0).default(500),
+  chargeAbove5KgPerKg: z.number().min(0).default(100),
+  ratePerKg: z.number().min(0).default(100),
+  freeShippingAboveAmount: z.number().min(0).default(15000),
+
+  // Quantity-based slabs
+  charge1to10: z.number().min(0).default(100),
+  charge11to20: z.number().min(0).default(200),
+  charge21to30: z.number().min(0).default(300),
+  freeThresholdQty: z.number().min(1).default(31),
 });
 
 export async function GET() {
@@ -23,34 +34,39 @@ export async function GET() {
       where: { id: "default-shipping" },
     });
 
-    if (!rule) {
-      rule = await db.shippingRule.create({
-        data: {
-          id: "default-shipping",
-          ratePerKg: 50,
-          minCharge: 100,
-          freeThresholdValue: 5000,
-          gstRate: 0.18,
-          notes: JSON.stringify({
-            charge1to10: 100,
-            charge11to20: 200,
-            charge21to30: 300,
-            freeThresholdQty: 31,
-          }),
-        },
-      });
-    }
-
-    let parsedNotes = {
+    const defaultConfig = {
+      calculationMode: "weight",
+      chargeUpTo1Kg: 100,
+      chargeUpTo2Kg: 200,
+      chargeUpTo3Kg: 300,
+      chargeUpTo5Kg: 500,
+      chargeAbove5KgPerKg: 100,
+      ratePerKg: 100,
+      freeShippingAboveAmount: 15000,
       charge1to10: 100,
       charge11to20: 200,
       charge21to30: 300,
       freeThresholdQty: 31,
     };
 
+    if (!rule) {
+      rule = await db.shippingRule.create({
+        data: {
+          id: "default-shipping",
+          ratePerKg: 100,
+          minCharge: 100,
+          freeThresholdValue: 15000,
+          gstRate: 0.18,
+          notes: JSON.stringify(defaultConfig),
+        },
+      });
+    }
+
+    let parsedConfig = { ...defaultConfig };
     if (rule.notes) {
       try {
-        parsedNotes = JSON.parse(rule.notes);
+        const parsed = JSON.parse(rule.notes);
+        parsedConfig = { ...defaultConfig, ...parsed };
       } catch {
         // fallback
       }
@@ -58,10 +74,7 @@ export async function GET() {
 
     return NextResponse.json({
       id: rule.id,
-      charge1to10: parsedNotes.charge1to10 ?? 100,
-      charge11to20: parsedNotes.charge11to20 ?? 200,
-      charge21to30: parsedNotes.charge21to30 ?? 300,
-      freeThresholdQty: parsedNotes.freeThresholdQty ?? 31,
+      ...parsedConfig,
     });
   } catch (error) {
     console.error("Admin shipping GET error:", error);
@@ -80,27 +93,25 @@ export async function PUT(req: Request) {
     const result = updateShippingSchema.safeParse(body);
 
     if (!result.success) {
-      return NextResponse.json({ error: "Invalid shipping data" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid shipping data", details: result.error.errors }, { status: 400 });
     }
 
     const data = result.data;
-    const notesJson = JSON.stringify({
-      charge1to10: data.charge1to10,
-      charge11to20: data.charge11to20,
-      charge21to30: data.charge21to30,
-      freeThresholdQty: data.freeThresholdQty,
-    });
+    const notesJson = JSON.stringify(data);
 
     const updated = await db.shippingRule.upsert({
       where: { id: "default-shipping" },
       update: {
-        minCharge: data.charge1to10,
+        ratePerKg: data.ratePerKg,
+        minCharge: data.chargeUpTo1Kg,
+        freeThresholdValue: data.freeShippingAboveAmount,
         notes: notesJson,
       },
       create: {
         id: "default-shipping",
-        ratePerKg: 50,
-        minCharge: data.charge1to10,
+        ratePerKg: data.ratePerKg,
+        minCharge: data.chargeUpTo1Kg,
+        freeThresholdValue: data.freeShippingAboveAmount,
         gstRate: 0.18,
         notes: notesJson,
       },
@@ -108,10 +119,8 @@ export async function PUT(req: Request) {
 
     return NextResponse.json({
       id: updated.id,
-      charge1to10: data.charge1to10,
-      charge11to20: data.charge11to20,
-      charge21to30: data.charge21to30,
-      freeThresholdQty: data.freeThresholdQty,
+      success: true,
+      ...data,
     });
   } catch (error) {
     console.error("Admin shipping PUT error:", error);

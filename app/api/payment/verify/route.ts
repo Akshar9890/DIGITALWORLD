@@ -38,17 +38,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Payment verification failed" }, { status: 400 });
     }
 
+    // ── Validate Order & Payment match in Database ───────────────────────────
+    const existingOrder = await db.order.findUnique({
+      where: { id: orderId },
+      include: { payment: true },
+    });
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // Enforce that razorpay_order_id belongs to this database order
+    if (existingOrder.payment && existingOrder.payment.razorpayOrderId !== razorpay_order_id) {
+      console.error("Security Alert: razorpay_order_id mismatch with database order", {
+        dbRazorpayId: existingOrder.payment.razorpayOrderId,
+        requestRazorpayId: razorpay_order_id,
+      });
+      return NextResponse.json(
+        { error: "Payment does not match the specified order" },
+        { status: 400 }
+      );
+    }
+
+    // Idempotency: If payment is already captured, return success immediately
+    if (existingOrder.paymentStatus === "captured") {
+      return NextResponse.json({
+        success: true,
+        orderId: existingOrder.id,
+        orderNumber: existingOrder.orderNumber,
+        alreadyCaptured: true,
+      });
+    }
+
     // ── Update DB in a transaction ───────────────────────────────────────────
     const order = await db.$transaction(async (tx) => {
-      const dbOrder = await tx.order.findUnique({ where: { id: orderId } });
-      if (!dbOrder) throw new Error("Order not found");
-
-      await tx.payment.update({
+      await tx.payment.upsert({
         where: { orderId },
-        data: {
+        update: {
           razorpayPaymentId: razorpay_payment_id,
           razorpaySignature: razorpay_signature,
-          amount: dbOrder.grandTotal,
+          amount: existingOrder.grandTotal,
+          status: "captured",
+          method: "razorpay",
+          webhookVerified: true,
+          capturedAt: new Date(),
+        },
+        create: {
+          orderId,
+          razorpayOrderId: razorpay_order_id,
+          razorpayPaymentId: razorpay_payment_id,
+          razorpaySignature: razorpay_signature,
+          amount: existingOrder.grandTotal,
+          currency: "INR",
           status: "captured",
           method: "razorpay",
           webhookVerified: true,

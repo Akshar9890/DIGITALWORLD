@@ -21,6 +21,7 @@ import {
   Tag,
   Layers,
 } from "lucide-react";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 type StockStatus = "in_stock" | "low_stock" | "out_of_stock";
 
@@ -364,10 +365,10 @@ export default function AdminProductsPage() {
       if (!res.ok) throw new Error("Failed to update shipping");
       const updated = await res.json();
       setShippingConfig(updated);
-      showToast("Courier charges updated successfully! 🚚", "success");
+      showToast("Shipping charges updated successfully! 🚚", "success");
       setShowShippingModal(false);
     } catch {
-      showToast("Failed to update courier charges", "error");
+      showToast("Failed to update shipping charges", "error");
     } finally {
       setSavingShipping(false);
     }
@@ -420,17 +421,17 @@ export default function AdminProductsPage() {
           <Package size={28} className="text-primary-container" />
           <div>
             <h1 className="text-headline-lg font-headline-md text-on-surface">Products & Shipping</h1>
-            <p className="text-xs text-slate-gray">Manage store products, tier pricing, photos & courier charges</p>
+            <p className="text-xs text-slate-gray">Manage store products, tier pricing, photos & shipping charges</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Manage Courier Charges Button */}
+          {/* Manage Shipping Charges Button */}
           <button
             onClick={() => setShowShippingModal(true)}
             className="btn-secondary flex items-center gap-2 border-tertiary/40 text-tertiary hover:bg-tertiary/10"
           >
             <Truck size={16} />
-            Courier Charges
+            Shipping Charges
           </button>
 
           {/* Add Product Button */}
@@ -444,12 +445,12 @@ export default function AdminProductsPage() {
         </div>
       </div>
 
-      {/* Courier Charge Summary Bar */}
+      {/* Shipping Charge Summary Bar */}
       <div className="bento-card p-4 flex flex-wrap items-center justify-between gap-4 border border-tertiary/20 bg-tertiary/5">
         <div className="flex items-center gap-3">
           <Truck className="text-tertiary shrink-0" size={20} />
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-tertiary">Active Admin Courier Charges</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-tertiary">Active Admin Shipping Charges</p>
             <p className="text-xs text-on-surface-variant">
               1–10 PCS: <span className="font-bold text-white">₹{shippingConfig.charge1to10}</span> | 
               11–20 PCS: <span className="font-bold text-white">₹{shippingConfig.charge11to20}</span> | 
@@ -686,17 +687,18 @@ export default function AdminProductsPage() {
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs text-slate-gray uppercase tracking-wider">Stock Status</label>
-                <select
+              <div>
+                <CustomSelect
+                  label="Stock Status"
                   value={addForm.stockStatus}
-                  onChange={(e) => setAddForm((f) => ({ ...f, stockStatus: e.target.value as StockStatus }))}
-                  className="input-field w-full"
-                >
-                  <option value="in_stock">In Stock</option>
-                  <option value="low_stock">Low Stock</option>
-                  <option value="out_of_stock">Out of Stock</option>
-                </select>
+                  onChange={(val) => setAddForm((f) => ({ ...f, stockStatus: val as StockStatus }))}
+                  options={[
+                    { value: "in_stock", label: "In Stock" },
+                    { value: "low_stock", label: "Low Stock" },
+                    { value: "out_of_stock", label: "Out of Stock" },
+                  ]}
+                  triggerClassName="w-full"
+                />
               </div>
             </div>
 
@@ -875,17 +877,18 @@ export default function AdminProductsPage() {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs text-slate-gray uppercase tracking-wider">Stock Status</label>
-                  <select
+                <div>
+                  <CustomSelect
+                    label="Stock Status"
                     value={editForm.stockStatus}
-                    onChange={(e) => setEditForm((f) => ({ ...f, stockStatus: e.target.value as StockStatus }))}
-                    className="input-field w-full"
-                  >
-                    <option value="in_stock">In Stock</option>
-                    <option value="low_stock">Low Stock</option>
-                    <option value="out_of_stock">Out of Stock</option>
-                  </select>
+                    onChange={(val) => setEditForm((f) => ({ ...f, stockStatus: val as StockStatus }))}
+                    options={[
+                      { value: "in_stock", label: "In Stock" },
+                      { value: "low_stock", label: "Low Stock" },
+                      { value: "out_of_stock", label: "Out of Stock" },
+                    ]}
+                    triggerClassName="w-full"
+                  />
                 </div>
               </div>
 
@@ -1054,7 +1057,7 @@ export default function AdminProductsPage() {
             <div className="flex items-center justify-between pb-3 border-b border-outline-variant/20">
               <div className="flex items-center gap-2">
                 <Truck size={20} className="text-tertiary" />
-                <h2 className="font-headline-sm text-white">Admin Courier Charges</h2>
+                <h2 className="font-headline-sm text-white">Admin Shipping Charges</h2>
               </div>
               <button
                 onClick={() => setShowShippingModal(false)}
@@ -1065,14 +1068,14 @@ export default function AdminProductsPage() {
             </div>
 
             <p className="text-xs text-slate-gray">
-              Configure delivery courier charges applied at checkout and quotation calculations.
+              Configure delivery shipping charges applied at checkout and quotation calculations.
             </p>
 
             <div className="space-y-4">
               {/* 1 - 10 PCS */}
               <div className="space-y-1">
                 <label className="text-xs text-slate-gray uppercase tracking-wider block">
-                  1 – 10 PCS Courier Charge (₹)
+                  1 – 10 PCS Shipping Charge (₹)
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-gray font-bold">₹</span>
@@ -1091,7 +1094,7 @@ export default function AdminProductsPage() {
               {/* 11 - 20 PCS */}
               <div className="space-y-1">
                 <label className="text-xs text-slate-gray uppercase tracking-wider block">
-                  11 – 20 PCS Courier Charge (₹)
+                  11 – 20 PCS Shipping Charge (₹)
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-gray font-bold">₹</span>
@@ -1110,7 +1113,7 @@ export default function AdminProductsPage() {
               {/* 21 - 30 PCS */}
               <div className="space-y-1">
                 <label className="text-xs text-slate-gray uppercase tracking-wider block">
-                  21 – 30 PCS Courier Charge (₹)
+                  21 – 30 PCS Shipping Charge (₹)
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-gray font-bold">₹</span>
@@ -1153,7 +1156,7 @@ export default function AdminProductsPage() {
                 className="btn-primary flex-1 gap-2"
               >
                 {savingShipping ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                {savingShipping ? "Saving..." : "Save Courier Rates"}
+                {savingShipping ? "Saving..." : "Save Shipping Charges"}
               </button>
               <button onClick={() => setShowShippingModal(false)} className="btn-secondary">
                 Cancel

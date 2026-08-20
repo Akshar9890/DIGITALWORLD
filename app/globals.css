@@ -19,8 +19,8 @@
   --radius-card: 12px;
   --radius-control: 8px;
   --space-unit: 4px;
-  --font-heading: ui-sans-serif, system-ui, sans-serif;
-  --font-body: ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-jetbrains), ui-monospace, monospace;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 .industrial-grid {
@@ -83,6 +83,19 @@ input[type="number"]::-webkit-outer-spin-button {
 
   body {
     @apply bg-background text-on-surface font-body-md antialiased;
+  }
+
+  /* Subtle noise texture overlay for depth */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px 256px;
   }
 
   * {
@@ -300,6 +313,36 @@ input[type="number"]::-webkit-outer-spin-button {
     background-color: rgba(26, 26, 28, 0.6);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+  }
+
+  /* Premium Industrial Glassmorphism Dropdown & Popover Menu */
+  .glass-dropdown {
+    background: rgba(25, 25, 27, 0.70) !important;
+    backdrop-filter: blur(18px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(140%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.10) !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35) !important;
+    border-radius: 12px !important;
+  }
+
+  .glass-dropdown-option {
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.90);
+    transition: all 0.15s ease-out;
+    background: transparent;
+  }
+
+  .glass-dropdown-option:hover,
+  .glass-dropdown-option.highlighted {
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+  }
+
+  .glass-dropdown-option.selected {
+    background: rgba(180, 40, 30, 0.18);
+    color: #ffffff;
+    font-weight: 600;
   }
 
   /* Text gradient */

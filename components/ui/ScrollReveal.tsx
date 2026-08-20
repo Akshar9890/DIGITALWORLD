@@ -21,13 +21,13 @@ export function ScrollReveal({
   once = true,
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once, margin: "-40px" });
+  const isInView = useInView(ref, { once, margin: "50px" });
 
   const getVariants = () => {
     switch (variant) {
       case "fade-up":
         return {
-          hidden: { opacity: 0, y: 30 },
+          hidden: { opacity: 0, y: 20 },
           visible: { opacity: 1, y: 0 },
         };
       case "fade-in":
@@ -37,22 +37,22 @@ export function ScrollReveal({
         };
       case "slide-left":
         return {
-          hidden: { opacity: 0, x: 40 },
+          hidden: { opacity: 0, x: 30 },
           visible: { opacity: 1, x: 0 },
         };
       case "slide-right":
         return {
-          hidden: { opacity: 0, x: -40 },
+          hidden: { opacity: 0, x: -30 },
           visible: { opacity: 1, x: 0 },
         };
       case "scale-up":
         return {
-          hidden: { opacity: 0, scale: 0.94, y: 20 },
+          hidden: { opacity: 0, scale: 0.96, y: 15 },
           visible: { opacity: 1, scale: 1, y: 0 },
         };
       default:
         return {
-          hidden: { opacity: 0, y: 20 },
+          hidden: { opacity: 0, y: 15 },
           visible: { opacity: 1, y: 0 },
         };
     }
@@ -88,7 +88,7 @@ export function StaggerContainer({
   className = "",
 }: StaggerContainerProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "-40px" });
+  const isInView = useInView(ref, { once: true, margin: "50px" });
 
   return (
     <motion.div

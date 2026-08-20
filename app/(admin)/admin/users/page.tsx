@@ -1,9 +1,9 @@
 "use client";
 
-
-
 import { useState, useEffect } from "react";
-import { Users, Search } from "lucide-react";
+import { Users, Search, ShoppingBag, FileText, IndianRupee } from "lucide-react";
+import { formatINR } from "@/lib/utils";
+import Link from "next/link";
 
 interface User {
   id: string;
@@ -13,7 +13,14 @@ interface User {
   role: string;
   adminSubRole: string | null;
   createdAt: string;
-  _count: { orders: number; quotations: number };
+  ordersCount: number;
+  quotationsCount: number;
+  totalSpent: number;
+  lastOrder?: {
+    orderNumber: string;
+    status: string;
+    createdAt: string;
+  } | null;
 }
 
 const ROLE_BADGE: Record<string, string> = {
@@ -41,7 +48,8 @@ export default function AdminUsersPage() {
   const filtered = users.filter(
     (u) =>
       (u.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      (u.phone ?? "").includes(search)
   );
 
   return (
@@ -50,7 +58,7 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Users size={24} className="text-primary-container" />
-          <h1 className="font-headline-md text-white">Users</h1>
+          <h1 className="font-headline-md text-white">Registered Users & Customers</h1>
         </div>
         <span className="text-xs text-slate-gray">{filtered.length} users</span>
       </div>
@@ -60,7 +68,7 @@ export default function AdminUsersPage() {
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-gray" />
         <input
           type="text"
-          placeholder="Search by name or email..."
+          placeholder="Search by name, email, or phone..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input-field pl-10 w-full"
@@ -87,21 +95,29 @@ export default function AdminUsersPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Phone</th>
+                  <th>Customer</th>
+                  <th>Contact Info</th>
                   <th>Role</th>
-                  <th>Orders</th>
-                  <th>Quotations</th>
-                  <th>Joined</th>
+                  <th className="text-center">Orders</th>
+                  <th className="text-right">Total Spent</th>
+                  <th className="text-center">Quotations</th>
+                  <th>Joined Date</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((user) => (
                   <tr key={user.id}>
-                    <td className="font-medium text-white">{user.name ?? "—"}</td>
-                    <td className="text-on-surface-variant">{user.email}</td>
-                    <td className="text-on-surface-variant">{user.phone ?? "—"}</td>
+                    <td>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-white">{user.name ?? "—"}</span>
+                        <span className="text-xs text-slate-gray">{user.email}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="text-xs font-mono text-on-surface-variant">
+                        {user.phone || "—"}
+                      </span>
+                    </td>
                     <td>
                       <span className={ROLE_BADGE[user.role] ?? "badge"}>
                         {user.role?.replace(/_/g, " ")}
@@ -110,9 +126,42 @@ export default function AdminUsersPage() {
                         <span className="badge-info ml-1 text-[10px]">{user.adminSubRole}</span>
                       )}
                     </td>
-                    <td className="text-center">{user._count?.orders ?? 0}</td>
-                    <td className="text-center">{user._count?.quotations ?? 0}</td>
-                    <td className="text-slate-gray text-sm">
+                    <td className="text-center">
+                      {user.ordersCount > 0 ? (
+                        <Link
+                          href={`/admin/orders?query=${encodeURIComponent(user.email)}`}
+                          className="inline-flex items-center gap-1 text-primary-container hover:underline font-bold text-xs"
+                        >
+                          <ShoppingBag size={12} />
+                          {user.ordersCount}
+                        </Link>
+                      ) : (
+                        <span className="text-slate-gray text-xs">0</span>
+                      )}
+                    </td>
+                    <td className="text-right font-medium">
+                      {user.totalSpent > 0 ? (
+                        <span className="text-status-success text-xs font-mono font-bold">
+                          {formatINR(user.totalSpent)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-gray text-xs">₹0</span>
+                      )}
+                    </td>
+                    <td className="text-center">
+                      {user.quotationsCount > 0 ? (
+                        <Link
+                          href={`/admin/quotations?query=${encodeURIComponent(user.email)}`}
+                          className="inline-flex items-center gap-1 text-tertiary hover:underline font-bold text-xs"
+                        >
+                          <FileText size={12} />
+                          {user.quotationsCount}
+                        </Link>
+                      ) : (
+                        <span className="text-slate-gray text-xs">0</span>
+                      )}
+                    </td>
+                    <td className="text-slate-gray text-xs">
                       {new Date(user.createdAt).toLocaleDateString("en-IN", {
                         day: "numeric",
                         month: "short",

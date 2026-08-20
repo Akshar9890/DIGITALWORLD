@@ -41,6 +41,19 @@ export async function GET(req: Request) {
         items: {
           include: { product: { select: { name: true, slug: true } } },
         },
+        shipments: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: {
+            id: true,
+            provider: true,
+            courierName: true,
+            awbNumber: true,
+            trackingUrl: true,
+            status: true,
+            estimatedDeliveryDate: true,
+          },
+        },
       },
     });
 
@@ -59,6 +72,7 @@ export async function GET(req: Request) {
         ? `${o.shippingAddress.line1}, ${o.shippingAddress.city}, ${o.shippingAddress.state} - ${o.shippingAddress.pincode}`
         : null,
       notes: o.notes ?? null,
+      shipment: o.shipments?.[0] ?? null,
       items: o.items.map((item) => ({
         id: item.id,
         productId: item.productId,

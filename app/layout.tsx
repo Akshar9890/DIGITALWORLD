@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 import { cn } from "@/lib/utils";
@@ -6,6 +7,20 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { CustomCursor } from "@/components/ui/CustomCursor";
 import { FloatingWhatsApp } from "@/components/ui/FloatingWhatsApp";
+import { PageTransition } from "@/components/ui/PageTransition";
+import { RouteLoadingBar } from "@/components/ui/RouteLoadingBar";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-jetbrains",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "DigitalWorld Industrial | Advanced Fire Suppression Systems",
@@ -32,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark scroll-smooth">
+    <html lang="en" className={cn("dark scroll-smooth", inter.variable, jetbrainsMono.variable)}>
       <head>
         {/* Material Symbols / Google Fonts loaded via CSS */}
       </head>
@@ -43,9 +58,12 @@ export default function RootLayout({
       >
         <Providers>
           <CustomCursor />
+          <RouteLoadingBar />
           <div className="flex min-h-screen flex-col">
             <Navbar />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1">
+              <PageTransition>{children}</PageTransition>
+            </main>
             <Footer />
           </div>
           <FloatingWhatsApp />

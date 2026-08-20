@@ -19,6 +19,7 @@ const addressSchema = z.object({
   fullName: z.string().min(2, "Name is required"),
   phone: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit phone required"),
   email: z.string().email("Valid email required"),
+  country: z.string().default("India"),
   street: z.string().min(5, "Address is required"),
   city: z.string().min(2, "City is required"),
   state: z.string().min(2, "State is required"),
@@ -44,13 +45,20 @@ export default function CheckoutPage() {
     staleTime: 0, // always fetch fresh on mount
   });
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<AddressForm>({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<AddressForm>({
     resolver: zodResolver(addressSchema),
     defaultValues: {
+      country: "India",
       email: session?.user?.email || "",
       fullName: session?.user?.name || "",
+      state: "",
+      city: "",
     }
   });
+
+  const selectedCountry = watch("country") || "India";
+  const selectedState = watch("state") || "";
+  const selectedCity = watch("city") || "";
 
   // Auto-fill city + state when pincode resolves
   const handlePincodeResolved = (result: PincodeResult) => {
@@ -79,7 +87,7 @@ export default function CheckoutPage() {
   const totalWeight = cart?.items?.reduce((acc: number, item: any) => acc + (item.product?.weightGrams || 280) * item.quantity, 0) || 280;
 
   // Courier charge calculated using active admin rates
-  const courier = getCourierCharge(totalWeight, totalQuantity, shippingRules);
+  const courier = getCourierCharge(totalWeight, totalQuantity, shippingRules, subtotal);
   const shipping = courier.amount;
   const gstAmount = getGSTAmount(subtotal);
   const total = subtotal + shipping + gstAmount;
@@ -243,12 +251,38 @@ export default function CheckoutPage() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="input-label">Street Address</label>
-                <input {...register("street")} className={`input-field ${errors.street ? 'border-status-error' : ''}`} placeholder="House no, street, area, landmark" />
+                <label className="input-label">Street Address *</label>
+                <input
+                  {...register("street")}
+                  className={`input-field ${errors.street ? 'border-status-error' : ''}`}
+                  placeholder="House no, street, area, landmark"
+                />
                 {errors.street && <span className="input-error">{errors.street.message}</span>}
               </div>
 
-              {/* Pincode with auto-fill */}
+              {/* City */}
+              <div>
+                <label className="input-label">City *</label>
+                <input
+                  {...register("city")}
+                  className={`input-field ${errors.city ? 'border-status-error' : ''}`}
+                  placeholder="e.g. Vadodara"
+                />
+                {errors.city && <span className="input-error">{errors.city.message}</span>}
+              </div>
+
+              {/* State */}
+              <div>
+                <label className="input-label">State *</label>
+                <input
+                  {...register("state")}
+                  className={`input-field ${errors.state ? 'border-status-error' : ''}`}
+                  placeholder="e.g. Gujarat"
+                />
+                {errors.state && <span className="input-error">{errors.state.message}</span>}
+              </div>
+
+              {/* Pincode with auto-lookup */}
               <div>
                 <PincodeInput
                   label="Pincode"
@@ -262,28 +296,8 @@ export default function CheckoutPage() {
               </div>
 
               <div>
-                <label className="input-label">City</label>
-                <input
-                  {...register("city")}
-                  className={`input-field ${errors.city ? 'border-status-error' : ''}`}
-                  placeholder="Auto-filled from pincode"
-                />
-                {errors.city && <span className="input-error">{errors.city.message}</span>}
-              </div>
-
-              <div>
-                <label className="input-label">State</label>
-                <input
-                  {...register("state")}
-                  className={`input-field ${errors.state ? 'border-status-error' : ''}`}
-                  placeholder="Auto-filled from pincode"
-                />
-                {errors.state && <span className="input-error">{errors.state.message}</span>}
-              </div>
-
-              <div>
                 <label className="input-label">GSTIN (Optional)</label>
-                <input {...register("gstin")} placeholder="For B2B input credit" className="input-field" />
+                <input {...register("gstin")} placeholder="For B2B input tax credit" className="input-field uppercase" maxLength={15} />
               </div>
             </div>
           </div>

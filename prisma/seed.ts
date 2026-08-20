@@ -284,25 +284,25 @@ Where it can be used:
   // ── 6. Admin User ─────────────────────────────────────────────────────────
   console.log("\n👤 Creating admin user...");
 
-  const adminPassword = "Admin@DigitalWorld2024!"; // TODO: Change in production!
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@digitalworld.com";
+  const adminPassword = process.env.ADMIN_INITIAL_PASSWORD || "Admin@DigitalWorld2026!";
   const passwordHash = await bcrypt.hash(adminPassword, 12);
 
   await prisma.user.upsert({
-    where: { email: "admin@digitalworld.com" },
+    where: { email: adminEmail },
     update: {},
     create: {
       name: "DigitalWorld Admin",
-      email: "admin@digitalworld.com",
+      email: adminEmail,
       passwordHash,
       role: "admin",
       adminSubRole: "SUPER_ADMIN",
     },
   });
 
-  console.log("   ✓ Admin user created");
-  console.log("   📧 Email: admin@digitalworld.com");
-  console.log("   🔑 Password: Admin@DigitalWorld2024!");
-  console.log("   ⚠️  CHANGE PASSWORD BEFORE PRODUCTION DEPLOYMENT!\n");
+  console.log("   ✓ Admin user ready");
+  console.log(`   📧 Email: ${adminEmail}`);
+  console.log("   🔑 Password: [Configured from environment]\n");
 
   console.log("✅ Database seeded successfully!\n");
   console.log("=".repeat(50));

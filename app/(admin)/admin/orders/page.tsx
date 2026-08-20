@@ -14,6 +14,7 @@ import {
   CheckCircle,
   XCircle,
 } from "lucide-react";
+import { CustomSelect } from "@/components/ui/CustomSelect";
 
 type OrderStatus =
   | "pending_payment"
@@ -45,6 +46,14 @@ interface Order {
   shippingAddress?: string;
   paymentMethod?: string;
   notes?: string;
+  shipment?: {
+    id: string;
+    provider: string;
+    courierName: string;
+    awbNumber: string;
+    trackingUrl?: string | null;
+    status: string;
+  } | null;
 }
 
 const STATUS_TABS: { label: string; value: OrderStatus | "all" }[] = [
@@ -83,6 +92,8 @@ const STATUS_ICONS: Record<string, typeof Package> = {
   cancelled: XCircle,
 };
 
+import DispatchModal from "@/components/admin/DispatchModal";
+
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +101,7 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+  const [dispatchOrder, setDispatchOrder] = useState<any | null>(null);
 
   const fetchOrders = async (status?: OrderStatus | "all") => {
     setLoading(true);
@@ -123,12 +135,55 @@ export default function AdminOrdersPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
+        const data = await res.json();
         setOrders((prev) =>
-          prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
+          prev.map((o) => {
+            if (o.id === orderId) {
+              return {
+                ...o,
+                status: newStatus,
+                shipment: data.shipment ?? o.shipment,
+              };
+            }
+            return o;
+          })
         );
       }
     } catch (err) {
       console.error("Failed to update order status:", err);
+    } finally {
+      setUpdatingStatus(null);
+    }
+  };
+
+  const handleShipmentStatusUpdate = async (orderId: string, shipmentId: string, newShipmentStatus: string) => {
+    setUpdatingStatus(orderId);
+    try {
+      const res = await fetch(`/api/admin/shipments/${shipmentId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newShipmentStatus }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setOrders((prev) =>
+          prev.map((o) => {
+            if (o.id === orderId) {
+              return {
+                ...o,
+                status: data.order?.status ?? (newShipmentStatus === "DELIVERED" ? "delivered" : "shipped"),
+                shipment: {
+                  ...o.shipment!,
+                  status: newShipmentStatus,
+                },
+              };
+            }
+            return o;
+          })
+        );
+      }
+    } catch (err) {
+      console.error("Failed to update shipment status:", err);
     } finally {
       setUpdatingStatus(null);
     }
@@ -331,39 +386,138 @@ export default function AdminOrdersPage() {
                               </div>
                             </div>
 
-                            {/* Status Update */}
-                            <div className="flex items-center gap-4 pt-4 border-t border-outline-variant/10">
-                              <span className="text-sm text-on-surface-variant">
-                                Update Status:
-                              </span>
-                              <div className="relative">
-                                <select
-                                  value={order.status}
-                                  onChange={(e) => {
-                                    e.stopPropagation();
-                                    handleStatusUpdate(
-                                      order.id,
-                                      e.target.value as OrderStatus
-                                    );
-                                  }}
-                                  disabled={updatingStatus === order.id}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="input-field appearance-none pr-8 min-w-[180px] disabled:opacity-50"
-                                >
-                                  {STATUS_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                      {opt.label}
-                                    </option>
-                                  ))}
-                                </select>
-                                <ChevronDown
-                                  size={14}
-                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-gray pointer-events-none"
-                                />
+                            {/* Actions: Status Update & Dispatch */}
+                            <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-outline-variant/10">
+                              <div className="flex items-center gap-3">
+                                <span className="text-sm text-on-surface-variant">
+                                  Status:
+                                </span>
+                                <div className="min-w-[180px]">
+                                  <CustomSelect
+                                    value={order.status}
+                                    onChange={(newVal) =>
+                                      handleStatusUpdate(order.id, newVal as OrderStatus)
+                                    }
+                                    disabled={updatingStatus === order.id}
+                                    options={STATUS_OPTIONS.map((opt) => ({
+                                      value: opt.value,
+                                      label: opt.label,
+                                    }))}
+                                    triggerClassName="text-xs py-1.5 px-3 bg-surface-container"
+                                  />
+                                </div>
+                                {updatingStatus === order.id && (
+                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-container border-t-transparent" />
+                                )}
                               </div>
-                              {updatingStatus === order.id && (
-                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-container border-t-transparent" />
-                              )}
+
+                              <div className="flex flex-wrap items-center gap-3">
+                                {order.shipment ? (
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex flex-col text-right">
+                                      <span className="text-xs font-semibold text-white">
+                                        {order.shipment.courierName}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-tertiary">
+                                        AWB: {order.shipment.awbNumber}
+                                      </span>
+                                    </div>
+
+                                    {/* Shipment Status Quick Advance Selector */}
+                                    <div className="min-w-[170px]">
+                                      <CustomSelect
+                                        value={order.shipment.status}
+                                        onChange={(newVal) =>
+                                          handleShipmentStatusUpdate(
+                                            order.id,
+                                            order.shipment!.id,
+                                            newVal
+                                          )
+                                        }
+                                        disabled={updatingStatus === order.id}
+                                        options={[
+                                          { value: "SHIPMENT_CREATED", label: "Manifested (Created)" },
+                                          { value: "PICKUP_SCHEDULED", label: "Pickup Scheduled" },
+                                          { value: "PICKED_UP", label: "Picked Up" },
+                                          { value: "IN_TRANSIT", label: "In Transit" },
+                                          { value: "REACHED_DESTINATION", label: "Reached Destination" },
+                                          { value: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
+                                          { value: "DELIVERED", label: "Delivered" },
+                                          { value: "DELAYED", label: "Delayed" },
+                                          { value: "NDR", label: "NDR (Undelivered)" },
+                                          { value: "RTO_INITIATED", label: "RTO Initiated" },
+                                        ]}
+                                        triggerClassName="text-xs py-1.5 px-3 bg-surface-container-high border-outline-variant/30"
+                                      />
+                                    </div>
+
+                                    <a
+                                      href={`/track-order?query=${order.shipment.awbNumber}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
+                                    >
+                                      <Truck size={13} /> Track
+                                    </a>
+
+                                    {order.status !== "delivered" && order.shipment.status !== "DELIVERED" && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setDispatchOrder(order);
+                                        }}
+                                        className="text-xs text-slate-gray hover:text-white px-2 py-1 underline"
+                                        title="Re-assign courier or update AWB"
+                                      >
+                                        Edit Dispatch
+                                      </button>
+                                    )}
+
+                                    {(order.status === "delivered" || order.shipment.status === "DELIVERED") && (
+                                      <span className="badge-success text-xs py-1.5 px-3">
+                                        ✓ Delivered
+                                      </span>
+                                    )}
+                                  </div>
+                                ) : order.status === "delivered" ? (
+                                  <span className="badge-success text-xs py-1.5 px-3">
+                                    ✓ Delivered
+                                  </span>
+                                ) : order.status === "cancelled" || order.status === "refunded" ? (
+                                  <span className="badge-error text-xs py-1.5 px-3">
+                                    {order.status.toUpperCase()}
+                                  </span>
+                                ) : order.status === "shipped" ? (
+                                  <div className="flex items-center gap-3">
+                                    <span className="badge-info text-xs py-1.5 px-3">
+                                      Shipped
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDispatchOrder(order);
+                                      }}
+                                      className="btn-primary text-xs py-2 px-4 flex items-center gap-2"
+                                    >
+                                      <Truck size={14} /> ASSIGN COURIER / AWB
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDispatchOrder(order);
+                                    }}
+                                    className="btn-primary text-xs py-2 px-4 flex items-center gap-2"
+                                  >
+                                    <Truck size={14} /> DISPATCH ORDER
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -376,6 +530,18 @@ export default function AdminOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Dispatch Order Modal */}
+      {dispatchOrder && (
+        <DispatchModal
+          order={dispatchOrder}
+          onClose={() => setDispatchOrder(null)}
+          onSuccess={() => {
+            fetchOrders(activeTab);
+            setDispatchOrder(null);
+          }}
+        />
+      )}
     </div>
   );
 }

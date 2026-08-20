@@ -384,7 +384,7 @@ export function InvoicePDF({ data }: { data: InvoicePDFData }) {
             )}
 
             <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Shipping / Courier</Text>
+              <Text style={styles.totalLabel}>Shipping Charge</Text>
               <Text style={styles.totalValue}>
                 {data.shippingValue > 0 ? fmt(data.shippingValue) : "FREE"}
               </Text>

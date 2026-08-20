@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ── Skip lint/type errors during Vercel build ────────────────────────────
-  eslint: { ignoreDuringBuilds: true },
-  typescript: { ignoreBuildErrors: true },
+
 
   // ── Images ───────────────────────────────────────────────────────────────
   images: {
