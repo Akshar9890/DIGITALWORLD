@@ -1,0 +1,706 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  retail
+  wholesale_pending
+  wholesale_approved
+  admin
+}
+
+enum AdminSubRole {
+  SUPER_ADMIN
+  PRODUCT_MANAGER
+  ORDER_MANAGER
+  SUPPORT
+  ACCOUNTING
+}
+
+enum CompanyStatus {
+  pending
+  approved
+  rejected
+}
+
+enum OrderStatus {
+  pending_payment
+  payment_failed
+  processing
+  shipped
+  delivered
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  initiated
+  authorized
+  captured
+  failed
+  refunded
+  partially_refunded
+}
+
+enum QuoteStatus {
+  open
+  quoted
+  accepted
+  converted
+  expired
+  closed
+}
+
+enum ReviewStatus {
+  pending
+  published
+  flagged
+  rejected
+}
+
+enum StorageProvider {
+  local
+  r2
+}
+
+// ─── User & Auth ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  phone         String?
+  passwordHash  String?
+  role          UserRole  @default(retail)
+  adminSubRole  AdminSubRole?
+  twoFASecret   String?   // TOTP secret for admin 2FA
+  twoFAEnabled  Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  company       Company?
+  addresses     Address[]
+  cartItems     CartItem[]
+  orders        Order[]
+  reviews       Review[]
+  quotations    QuoteRequest[] @relation("CustomerQuotations")
+  instantQuotations Quotation[] @relation("InstantQuotations")
+  auditLogs     AuditLog[] @relation("AuditActor")
+
+  @@map("users")
+}
+
+// Auth.js required tables
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── B2B Company ─────────────────────────────────────────────────────────────
+
+model Company {
+  id                String        @id @default(cuid())
+  userId            String        @unique
+  companyName       String
+  contactName       String?
+  contactEmail      String?
+  contactPhone      String?
+  gstin             String        @unique
+  businessType      String        // distributor | contractor | facility_manager | reseller | other
+  expectedVolume    String        // "10-49" | "50-99" | etc.
+  address           String?
+  city              String?
+  state             String?
+  pincode           String?
+  status            CompanyStatus @default(pending)
+  assignedTierId    String?
+  rejectionReason   String?
+  approvedAt        DateTime?
+  approvedByUserId  String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  // Relations
+  user              User          @relation(fields: [userId], references: [id])
+  assignedTier      PricingTier?  @relation(fields: [assignedTierId], references: [id])
+  orders            Order[]
+  quoteRequests     QuoteRequest[]
+
+  @@map("companies")
+}
+
+// ─── Catalog ─────────────────────────────────────────────────────────────────
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  image       String?
+  parentId    String?
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique
+  categoryId      String
+  shortDesc       String?
+  description     String?   @db.Text
+  specs           Json      // Flexible spec table as JSON
+  hsnCode         String    // e.g. "8424" — TODO: confirm with CA
+  weightGrams     Int       // Weight per unit in grams (for shipping calculation)
+  images          String[]  // R2/local URLs
+  datasheetUrl    String?   // PDF URL
+  videoUrl        String?   // YouTube embed URL
+  whatsappMsg     String?   // Pre-filled WhatsApp enquiry message
+  isActive        Boolean   @default(true)
+  isFeatured      Boolean   @default(false)
+  averageRating   Float     @default(0)
+  reviewCount     Int       @default(0)
+  stockStatus     String    @default("in_stock") // in_stock | low_stock | out_of_stock
+  metaTitle       String?
+  metaDescription String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  category        Category      @relation(fields: [categoryId], references: [id])
+  prices          ProductPrice[]
+  cartItems       CartItem[]
+  orderItems      OrderItem[]
+  reviews         Review[]
+  quoteRequests   QuoteRequest[]
+  quotations      Quotation[]
+
+  @@map("products")
+}
+
+// ─── Pricing ─────────────────────────────────────────────────────────────────
+
+model PricingTier {
+  id           String   @id @default(cuid())
+  name         String   // e.g. "10–49 pcs"
+  minQty       Int
+  maxQty       Int?     // null = unlimited (e.g. 5000+)
+  isRetail     Boolean  @default(false) // true = B2C tier
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  // Relations
+  prices       ProductPrice[]
+  companies    Company[]
+
+  @@map("pricing_tiers")
+}
+
+model ProductPrice {
+  id           String      @id @default(cuid())
+  productId    String
+  tierId       String
+  pricePerUnit Decimal     @db.Decimal(10, 2) // INR
+  currency     String      @default("INR")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  product      Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tier         PricingTier @relation(fields: [tierId], references: [id])
+
+  @@unique([productId, tierId])
+  @@map("product_prices")
+}
+
+// ─── Shipping ────────────────────────────────────────────────────────────────
+
+model ShippingRule {
+  id                  String   @id @default(cuid())
+  ratePerKg           Decimal  @db.Decimal(10, 2) // ₹150/kg default
+  minCharge           Decimal  @db.Decimal(10, 2) // ₹80 minimum
+  freeThresholdValue  Decimal? @db.Decimal(10, 2) // ₹5000 = free for B2C
+  gstRate             Decimal  @db.Decimal(5, 4)  // 0.18 = 18%
+  isActive            Boolean  @default(true)
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("shipping_rules")
+}
+
+// ─── Cart ─────────────────────────────────────────────────────────────────────
+
+model CartItem {
+  id          String   @id @default(cuid())
+  userId      String?  // null for guest
+  sessionId   String?  // guest session token
+  productId   String
+  quantity    Int
+  addedAt     DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@unique([userId, productId])
+  @@unique([sessionId, productId])
+  @@map("cart_items")
+}
+
+// ─── Address ─────────────────────────────────────────────────────────────────
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String?  // null for guest checkout
+  label     String?  // "Home" | "Office" | "Warehouse"
+  name      String
+  phone     String
+  line1     String
+  line2     String?
+  city      String
+  state     String
+  pincode   String
+  gstin     String?  // Optional GSTIN for B2B purchases in B2C flow
+  lat       Float?   // from Google Maps geocoding
+  lng       Float?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  orders    Order[]  @relation("ShippingAddress")
+  billingOrders Order[] @relation("BillingAddress")
+
+  @@map("addresses")
+}
+
+// ─── Instant Quotation (B2C) ─────────────────────────────────────────────────
+
+model Quotation {
+  id              String      @id @default(cuid())
+  quotationNumber String      @unique // e.g. "DW-QT-2026-0001"
+  userId          String?     // null for guest
+
+  // Product snapshot (prices are re-resolved from the pricing engine at create time)
+  productId       String
+  productName     String
+  productSlug     String
+  quantity        Int
+  unitPrice       Decimal     @db.Decimal(10, 2) // applied price per unit
+  standardPrice   Decimal     @db.Decimal(10, 2) // base/retail price per unit (discount transparency)
+  appliedTierName String      // e.g. "10–49 PCS"
+
+  // Amounts
+  subtotal        Decimal     @db.Decimal(10, 2)
+  gstRate         Decimal     @db.Decimal(5, 4) // 0.18
+  gstAmount       Decimal     @db.Decimal(10, 2)
+  courierCharge   Decimal     @db.Decimal(10, 2)
+  grandTotal      Decimal     @db.Decimal(10, 2)
+
+  // Customer (B2C — optional company/GSTIN for B2B)
+  customerName    String
+  customerPhone   String
+  customerEmail   String
+  companyName     String?
+  gstin           String?
+  deliveryAddress String?
+  pincode         String
+  state           String?
+  notes           String?     @db.Text
+
+  status          QuoteStatus @default(open)
+  validUntil      DateTime
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user            User?       @relation("InstantQuotations", fields: [userId], references: [id], onDelete: SetNull)
+  product         Product     @relation(fields: [productId], references: [id])
+
+  @@map("quotations")
+}
+// ─── Quote Request ────────────────────────────────────────────────────────────
+
+model QuoteRequest {
+  id               String      @id @default(cuid())
+  quotationNo      String?     @unique // "DW-QT-2026-0001" — set when quotation is generated
+  userId           String?     // null for guests (B2C)
+  companyId        String?     // null for B2C — only set for B2B wholesale requests
+  productId        String
+  quantity         Int
+  deliveryPincode  String?
+
+  // B2C customer details (Instant Quotation — no company/GSTIN required)
+  customerName     String?
+  customerPhone    String?
+  customerEmail    String?
+  deliveryAddress  String?     @db.Text
+  deliveryCity     String?
+  deliveryState    String?
+  validUntil       DateTime?   // quotations are valid for 30 days
+
+  notes            String?     @db.Text
+  status           QuoteStatus @default(open)
+
+  // Calculated amounts (single pricing engine — identical to cart/checkout)
+  unitPrice        Decimal?    @db.Decimal(10, 2)
+  subtotal         Decimal?    @db.Decimal(10, 2)
+  freightEstimate  Decimal?    @db.Decimal(10, 2)
+  courierCharge    Decimal?    @db.Decimal(10, 2)
+  gstOnGoods       Decimal?    @db.Decimal(10, 2)
+  gstOnShipping    Decimal?    @db.Decimal(10, 2)
+  quotedTotal      Decimal?    @db.Decimal(10, 2)
+  grandTotal       Decimal?    @db.Decimal(10, 2)
+
+  // Admin override
+  adminOverrideNote String?
+  adminOverrideBy   String?
+
+  // Quote PDF
+  pdfUrl           String?
+  pdfVersion       Int         @default(1)
+
+  quotedAt         DateTime?
+  expiresAt        DateTime?
+  acceptedAt       DateTime?
+  convertedAt      DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  user             User?       @relation("CustomerQuotations", fields: [userId], references: [id])
+  company          Company?    @relation(fields: [companyId], references: [id])
+  product          Product     @relation(fields: [productId], references: [id])
+  order            Order?
+
+  @@map("quote_requests")
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique // e.g. "DW-2024-0001"
+  userId            String?     // null for guest checkout
+  companyId         String?
+  quoteRequestId    String?     @unique
+  shippingAddressId String?
+  billingAddressId  String?
+
+  // Amounts (all in INR, stored as Decimal to avoid float errors)
+  subtotal          Decimal     @db.Decimal(10, 2)
+  shippingAmount    Decimal     @db.Decimal(10, 2) @default(0)
+  taxableAmount     Decimal     @db.Decimal(10, 2) // subtotal + shipping (taxable portion)
+
+  // GST: CGST+SGST for intra-state, IGST for inter-state
+  sellerState       String
+  buyerState        String
+  isSameState       Boolean     // determines CGST/SGST vs IGST
+  cgstAmount        Decimal     @db.Decimal(10, 2) @default(0)
+  sgstAmount        Decimal     @db.Decimal(10, 2) @default(0)
+  igstAmount        Decimal     @db.Decimal(10, 2) @default(0)
+  totalGST          Decimal     @db.Decimal(10, 2)
+  grandTotal        Decimal     @db.Decimal(10, 2)
+
+  status            OrderStatus @default(pending_payment)
+  paymentStatus     PaymentStatus @default(initiated)
+  trackingNumber    String?
+  trackingUrl       String?
+  notes             String?     @db.Text
+
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  // Relations
+  user              User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  company           Company?    @relation(fields: [companyId], references: [id])
+  quoteRequest      QuoteRequest? @relation(fields: [quoteRequestId], references: [id])
+  shippingAddress   Address?    @relation("ShippingAddress", fields: [shippingAddressId], references: [id])
+  billingAddress    Address?    @relation("BillingAddress", fields: [billingAddressId], references: [id])
+  items             OrderItem[]
+  payment           Payment?
+  invoice           Invoice?
+  shipments         Shipment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2) // Price at time of order (snapshot)
+  lineTotal   Decimal  @db.Decimal(10, 2)
+  hsnCode     String
+  createdAt   DateTime @default(now())
+
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+// ─── Payment ─────────────────────────────────────────────────────────────────
+
+model Payment {
+  id                  String        @id @default(cuid())
+  orderId             String        @unique
+  razorpayOrderId     String        @unique
+  razorpayPaymentId   String?       @unique // Set only after capture
+  razorpaySignature   String?
+  amount              Decimal       @db.Decimal(10, 2)
+  currency            String        @default("INR")
+  status              PaymentStatus @default(initiated)
+  method              String?       // upi | card | netbanking | wallet
+  bank                String?
+  wallet              String?
+  vpa                 String?       // UPI VPA
+  failureReason       String?
+  refundAmount        Decimal?      @db.Decimal(10, 2)
+  refundId            String?
+  refundedAt          DateTime?
+  webhookVerified     Boolean       @default(false) // NEVER mark paid without this = true
+  webhookPayload      Json?         // raw webhook for debugging
+  capturedAt          DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  order               Order         @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+// ─── Invoice ─────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id               String   @id @default(cuid())
+  orderId          String   @unique
+  invoiceNumber    String   @unique // "DW-INV-2024-0001"
+  issuedAt         DateTime @default(now())
+
+  // Seller
+  sellerGstin      String   // TODO: Replace with BUSINESS_GSTIN env
+  sellerName       String
+  sellerAddress    String
+  sellerState      String
+
+  // Buyer
+  buyerName        String
+  buyerEmail       String
+  buyerGstin       String?  // B2B only
+  billingAddress   String
+  shippingAddress  String
+  buyerState       String
+  placeOfSupply    String
+
+  // Tax
+  isSameState      Boolean
+  taxableValue     Decimal  @db.Decimal(10, 2)
+  cgstRate         Decimal  @db.Decimal(5, 4) @default(0)
+  cgstAmount       Decimal  @db.Decimal(10, 2) @default(0)
+  sgstRate         Decimal  @db.Decimal(5, 4) @default(0)
+  sgstAmount       Decimal  @db.Decimal(10, 2) @default(0)
+  igstRate         Decimal  @db.Decimal(5, 4) @default(0)
+  igstAmount       Decimal  @db.Decimal(10, 2) @default(0)
+  totalGST         Decimal  @db.Decimal(10, 2)
+  shippingValue    Decimal  @db.Decimal(10, 2) @default(0)
+  shippingGST      Decimal  @db.Decimal(10, 2) @default(0)
+  grandTotal       Decimal  @db.Decimal(10, 2)
+  amountInWords    String
+
+  pdfUrl           String?  // R2 URL
+  createdAt        DateTime @default(now())
+
+  order            Order    @relation(fields: [orderId], references: [id])
+
+  @@map("invoices")
+}
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+
+model Review {
+  id              String       @id @default(cuid())
+  userId          String
+  productId       String
+  orderId         String?      // linked for verified purchase badge
+  rating          Int          // 1–5
+  title           String
+  comment         String       @db.Text
+  images          String[]     // R2 URLs (max 5)
+  verifiedPurchase Boolean     @default(false)
+  status          ReviewStatus @default(pending)
+  adminResponse   String?      @db.Text
+  helpfulVotes    Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  user            User         @relation(fields: [userId], references: [id])
+  product         Product      @relation(fields: [productId], references: [id])
+
+  @@map("reviews")
+}
+
+// ─── Audit Log ───────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String
+  actorRole   String
+  action      String   // e.g. "APPROVE_B2B_APPLICATION", "UPDATE_PRODUCT_PRICE", "OVERRIDE_QUOTE"
+  entityType  String   // "Company" | "Product" | "QuoteRequest" | "Order" | etc.
+  entityId    String
+  before      Json?    // snapshot before change
+  after       Json?    // snapshot after change
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+
+  actor       User     @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ─── Shipping & Live Tracking ────────────────────────────────────────────────
+
+enum ShipmentStatus {
+  ORDER_PLACED
+  PAYMENT_CONFIRMED
+  PROCESSING
+  PACKED
+  SHIPMENT_CREATED
+  PICKUP_SCHEDULED
+  PICKED_UP
+  IN_TRANSIT
+  REACHED_DESTINATION
+  OUT_FOR_DELIVERY
+  DELIVERED
+  DELIVERY_ATTEMPTED
+  DELAYED
+  NDR
+  RTO_INITIATED
+  RTO_IN_TRANSIT
+  RTO_DELIVERED
+  CANCELLED
+  LOST
+  DAMAGED
+}
+
+model Shipment {
+  id                    String                 @id @default(cuid())
+  orderId               String
+  provider              String                 @default("manual") // shiprocket | delhivery | manual
+  providerShipmentId    String?
+  courierId             String?
+  courierName           String                 // e.g. "Delhivery", "Blue Dart", "DTDC"
+  courierCode           String?
+  awbNumber             String                 @unique // Tracking Number
+  trackingUrl           String?
+  status                ShipmentStatus         @default(SHIPMENT_CREATED)
+  estimatedDeliveryDate DateTime?
+  pickupDate            DateTime?
+  weightGrams           Int                    @default(500)
+  lengthCm              Float                  @default(15)
+  widthCm               Float                  @default(10)
+  heightCm              Float                  @default(10)
+  shippingCost          Decimal                @default(0) @db.Decimal(10, 2)
+  labelUrl              String?
+  manifestUrl           String?
+  notes                 String?                @db.Text
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  order                 Order                  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  trackingEvents        ShipmentTrackingEvent[]
+
+  @@map("shipments")
+}
+
+model ShipmentTrackingEvent {
+  id             String         @id @default(cuid())
+  shipmentId     String
+  provider       String         // shiprocket | delhivery | manual
+  courier        String
+  awbNumber      String
+  externalStatus String?        // raw provider status e.g. "OUT FOR DEL"
+  internalStatus ShipmentStatus // normalized status
+  location       String?
+  description    String?        @db.Text
+  eventTimestamp DateTime       @default(now())
+  rawPayload     Json?
+  createdAt      DateTime       @default(now())
+
+  shipment       Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_tracking_events")
+}
+
+model ShippingProviderConfig {
+  id          String   @id @default(cuid())
+  providerKey String   @unique // shiprocket | delhivery | manual
+  name        String
+  isEnabled   Boolean  @default(true)
+  isDefault   Boolean  @default(false)
+  settings    Json?    // server-side configuration metadata
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("shipping_provider_configs")
+}
+
