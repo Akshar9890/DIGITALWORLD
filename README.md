@@ -360,33 +360,40 @@ DigitalWorld implements 8 authoritative algorithms across pricing, tax engineeri
 ### 7.1 Dual-Persona Server-Side Dynamic Price Resolution Engine (`resolvePrice`)
 **Location:** [`lib/pricing.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/pricing.ts)
 
-#### Mathematical Model
-Let $P$ be a product with pricing tiers $T = \{t_1, t_2, \dots, t_k\}$ ordered such that $t_i.\text{minQty} < t_{i+1}.\text{minQty}$.
-For customer quantity $Q \in \mathbb{N}^+$ and buyer context $C = \langle \text{role}, \text{assignedTierId} \rangle$:
+#### Mathematical & Logical Specification
+Let $P$ be a product with sorted pricing tiers $T = [t_1, t_2, \dots, t_k]$ where $t_i.\text{minQty} < t_{i+1}.\text{minQty}$.  
+For customer order quantity $Q$ and buyer context $C = \langle \text{role}, \text{assignedTierId} \rangle$:
 
-$$\text{Matched Tier } t^* = \arg\max_{t \in T} \{ t.\text{minQty} \mid t.\text{minQty} \le Q \land (t.\text{maxQty} = \text{null} \lor Q \le t.\text{maxQty}) \}$$
+1. **Active Quantity Tier Selection ($t^*$):**
+   ```text
+   t* = Largest tier in T such that (t.minQty <= Q) AND (t.maxQty == null OR Q <= t.maxQty)
+   ```
 
-If $\text{role} = \text{wholesale\_approved}$ and $\text{assignedTierId} \neq \text{null}$, the effective price $P_{\text{eff}}$ is resolved with wholesale overriding:
+2. **Wholesale Override Evaluation ($P_{\text{eff}}$):**
+   ```text
+   IF role == "wholesale_approved" AND assignedTierId != null:
+       P_eff = MIN(t*.pricePerUnit, assignedTierPrice.pricePerUnit)
+   ELSE:
+       P_eff = t*.pricePerUnit
+   ```
 
-$$P_{\text{eff}} = \begin{cases} 
-\min(t^*.\text{pricePerUnit}, P_{\text{assigned}}), & \text{if } \text{role} = \text{wholesale\_approved} \land \text{assignedPrice exists} \\
-t^*.\text{pricePerUnit}, & \text{otherwise}
-\end{cases}$$
-
-$$\text{Subtotal} = P_{\text{eff}} \times Q$$
+3. **Subtotal Formulation:**
+   ```text
+   Subtotal = P_eff * Q
+   ```
 
 ```mermaid
 flowchart TD
-    Start([Input: productId, quantity Q, userContext]) --> FetchTiers[(Fetch ProductPrices & Tiers from DB)]
+    Start([Input: productId, quantity Q, userContext]) --> FetchTiers[(Fetch ProductPrices and Tiers from DB)]
     FetchTiers --> Sort[Sort Tiers Ascending by minQty]
-    Sort --> FilterMatch{Filter Tiers where:<br/>minQty <= Q AND (maxQty == null OR Q <= maxQty)}
-    FilterMatch --> FindLargest[Select Last Match t*]
-    FindLargest --> CheckWholesale{Role == wholesale_approved<br/>AND assignedTierId != null?}
-    CheckWholesale -- Yes --> ComparePrices{assignedPrice.pricePerUnit < t*.pricePerUnit?}
-    ComparePrices -- Yes --> Override[Set Chosen Price = assignedPrice]
-    ComparePrices -- No --> Keep[Set Chosen Price = t*.pricePerUnit]
+    Sort --> FilterMatch{"Filter Tiers where: minQty <= Q and (maxQty == null or Q <= maxQty)"}
+    FilterMatch --> FindLargest["Select Last Match (t*)"]
+    FindLargest --> CheckWholesale{"Role == 'wholesale_approved' and assignedTierId != null?"}
+    CheckWholesale -- Yes --> ComparePrices{"assignedPrice < tierPrice?"}
+    ComparePrices -- Yes --> Override["Set Chosen Price = assignedPrice"]
+    ComparePrices -- No --> Keep["Set Chosen Price = tierPrice"]
     CheckWholesale -- No --> Keep
-    Override --> CalcSubtotal[Subtotal = Chosen Price * Q]
+    Override --> CalcSubtotal["Subtotal = Chosen Price * Q"]
     Keep --> CalcSubtotal
     CalcSubtotal --> ReturnResult([Return PriceResult: unitPrice, tierId, subtotal])
 ```
@@ -487,14 +494,16 @@ export function getPriceForQuantity(
 
 Maximizes average order volume (AOV) by identifying when a customer is close to unlocking a cheaper tier:
 
-$$\Delta Q = t_{\text{next}}.\text{minQty} - Q$$
+```text
+ΔQ = nextTier.minQty - currentQuantity
 
-$$\text{Hint Condition: } \begin{cases} 
-\text{Show Nudge with } \Delta Q, & \text{if } 1 \le \Delta Q \le 3 \\
-\text{Suppress (prevent notification fatigue)}, & \text{if } \Delta Q > 3 \lor t_{\text{next}} = \emptyset 
-\end{cases}$$
+Nudge Trigger Condition:
+- IF (1 <= ΔQ <= 3): Display "Add ΔQ more pieces to unlock lower price!"
+- ELSE: Suppress hint (prevent notification fatigue)
 
-$$\text{Projected Savings} = (Q \times P_{\text{current}}) - ((Q + \Delta Q) \times P_{\text{next}})$$
+Projected Savings:
+Savings = (currentQuantity * currentUnitPrice) - ((currentQuantity + ΔQ) * nextTierUnitPrice)
+```
 
 ```typescript
 export function getNextTierHint(
@@ -518,22 +527,27 @@ export function getNextTierHint(
 **Location:** [`lib/tax.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/tax.ts#L54-L139)
 
 #### State Normalization & Tax Partition Logic
-Let $S_{\text{seller}}$ and $S_{\text{buyer}}$ be the normalized state strings:
+Let `sellerState` and `buyerState` be the normalized geographic strings:
 
-$$\text{Normalize}(S) = \text{trim}(\text{lowercase}(S))$$
+```text
+isSameState = (trim(lowercase(sellerState)) === trim(lowercase(buyerState)))
 
-$$\text{isSameState} = (\text{Normalize}(S_{\text{seller}}) = \text{Normalize}(S_{\text{buyer}}))$$
+Tax Breakdown Formulation:
+- Goods GST Rate (r) = 18% (0.18)
+- Shipping GST Rate (rs) = 18% (0.18)
 
-$$\text{Goods GST Rate } r = 0.18, \quad \text{Shipping GST Rate } r_s = 0.18$$
+IF isSameState === true (Intra-State Transaction):
+    CGST = roundToTwo(Subtotal * 0.09)
+    SGST = roundToTwo(Subtotal * 0.09)
+    IGST = 0.00
+ELSE (Inter-State Transaction):
+    CGST = 0.00
+    SGST = 0.00
+    IGST = roundToTwo(Subtotal * 0.18)
 
-$$\begin{aligned}
-\text{If } \text{isSameState} = \text{true}: \quad & \text{CGST} = \text{round}_2\left(\text{Subtotal} \times \frac{r}{2}\right), \quad \text{SGST} = \text{round}_2\left(\text{Subtotal} \times \frac{r}{2}\right), \quad \text{IGST} = 0 \\
-\text{If } \text{isSameState} = \text{false}: \quad & \text{CGST} = 0, \quad \text{SGST} = 0, \quad \text{IGST} = \text{round}_2(\text{Subtotal} \times r)
-\end{aligned}$$
-
-$$\text{Shipping GST} = \text{round}_2(\text{ShippingCost} \times r_s)$$
-
-$$\text{Grand Total} = \text{round}_2\left(\text{Subtotal} + \text{Total Goods GST} + \text{ShippingCost} + \text{Shipping GST}\right)$$
+Shipping GST = roundToTwo(ShippingCost * 0.18)
+Grand Total  = roundToTwo(Subtotal + TotalGoodsGST + ShippingCost + ShippingGST)
+```
 
 ```
                                     ┌────────────────────────┐
@@ -569,7 +583,10 @@ $$\text{Grand Total} = \text{round}_2\left(\text{Subtotal} + \text{Total Goods G
 #### Volumetric Weight & Multi-Provider Rate Selector
 For carton dimensions $L \times W \times H$ in centimeters and actual weight $W_{\text{actual}}$ in kilograms:
 
-$$W_{\text{volumetric}} = \frac{L \times W \times H}{5000}, \quad W_{\text{chargeable}} = \max(W_{\text{actual}}, W_{\text{volumetric}})$$
+```text
+Volumetric Weight (kg) = (Length * Width * Height) / 5000
+Chargeable Weight (kg) = MAX(Actual Weight, Volumetric Weight)
+```
 
 ```typescript
 export class ShippingRegistry {
@@ -636,7 +653,7 @@ stateDiagram-v2
 ### 7.7 Indian Currency Amount-to-Words Algorithm (`amountToWords`)
 **Location:** [`lib/tax.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/tax.ts#L181-L224)
 
-Decomposes 64-bit floating point numbers into Indian numbering units (Crore $\to$ Lakh $\to$ Thousand $\to$ Hundred $\to$ Tens $\to$ Units $\to$ Paise) for legal Indian GST compliance.
+Decomposes numbers into Indian numbering units (`Crore` $\to$ `Lakh` $\to$ `Thousand` $\to$ `Hundred` $\to$ `Tens` $\to$ `Units` $\to$ `Paise`) for legal Indian GST tax invoices.
 
 ```typescript
 function numToWords(n: number): string {
@@ -670,9 +687,10 @@ export function amountToWords(amount: number): string {
 
 Protects against timing attacks and double-capture through constant-time byte comparisons and transactional database idempotency locks:
 
-$$\text{Signature}_{\text{expected}} = \text{HMAC-SHA256}(\text{order\_id} \mathbin{\Vert} \text{"|"} \mathbin{\Vert} \text{payment\_id}, K_{\text{secret}})$$
-
-$$\text{Valid} \iff \text{timingSafeEqual}(\text{Buffer}(\text{Signature}_{\text{expected}}), \text{Buffer}(\text{Signature}_{\text{received}}))$$
+```text
+Generated Signature = HMAC-SHA256(order_id + "|" + payment_id, RAZORPAY_KEY_SECRET)
+Is Valid = crypto.timingSafeEqual(Buffer(Generated Signature), Buffer(Received Signature))
+```
 
 ```typescript
 const generatedSignature = crypto
@@ -696,12 +714,12 @@ if (!isAuthentic) {
 
 ```mermaid
 flowchart LR
-    A[B2B Application Submitted] --> B[GSTIN Check 07AAAAA0000A1Z5]
-    B --> C{Admin Review}
-    C -- Approved --> D[Role: wholesale_approved]
-    D --> E[Unlock Custom Volume Tier]
-    E --> F[Instant PDF Quotations with HSN]
-    C -- Rejected --> G[Role: b2c_retailer]
+    A["B2B Application Submitted"] --> B["GSTIN Verification (Regex Check)"]
+    B --> C{"Admin Review"}
+    C -- Approved --> D["Role: wholesale_approved"]
+    D --> E["Unlock Custom Volume Tier"]
+    E --> F["Instant PDF Quotations with HSN"]
+    C -- Rejected --> G["Role: b2c_retailer"]
 ```
 
 ---
