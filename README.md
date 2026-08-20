@@ -101,23 +101,53 @@ DigitalWorld Commerce
 
 ---
 
-## 📂 Project Structure
+## 📂 Project Structure & Architecture Mapping
+
+DigitalWorld is organized as a unified full-stack Next.js application with clean separation between **Frontend (UI/UX & Client Logic)** and **Backend (API Handlers, Algorithms & Persistence)**:
 
 ```text
 digitalworld-app/
-├── app/                  # Next.js App Router (Storefront, Admin, API Routes)
-│   ├── (admin)/admin/    # Admin dashboard (Orders, Shipments, Quotes, Users)
-│   ├── (auth)/           # Authentication & B2B Wholesale registration
-│   ├── api/              # Secure API handlers & authoritative webhooks
-│   ├── cart/             # Shopping cart with volume pricing
-│   ├── checkout/         # Checkout flow & Razorpay payment modal
-│   ├── quotation/        # Instant quotation generator & PDF viewer
-│   └── track-order/      # Public milestone order tracker
-├── components/           # Modular React components (UI, Admin, Home, Shipping)
-├── docs/                 # Detailed technical engineering specifications
-├── lib/                  # Server-side business logic (Pricing, Tax, Shipping, DB)
-├── prisma/               # PostgreSQL schema & database seed script
-└── public/               # Static assets, product imagery, diagrams
+│
+├── 🎨 FRONTEND ARCHITECTURE (Storefront, UI & Client Interactions)
+│   ├── app/                              # Next.js Server & Client Page Routes
+│   │   ├── (auth)/                       # Customer & B2B Login / Register UI
+│   │   ├── (admin)/admin/                # Admin Panel Interface & Dispatch Modals
+│   │   ├── account/                      # Customer Portal (Orders, Tracking, Settings)
+│   │   ├── cart/                         # Interactive Shopping Cart with live tier updates
+│   │   ├── catalog/                      # Product Catalog & Technical Specification UI
+│   │   ├── checkout/                     # Multi-step Checkout Flow & Razorpay Modal
+│   │   ├── quotation/                    # Instant B2B PDF Quotation Generator
+│   │   └── track-order/                  # Public Milestone Timeline Tracker
+│   ├── components/                       # Modular React Presentation Components
+│   │   ├── admin/                        # Order tables, status badges, dispatch modal
+│   │   ├── home/                         # HeroSection, LiveEstimator, Specs, TrustStrip
+│   │   ├── layout/                       # Sticky Navbar, Footer, Mobile Navigation
+│   │   ├── shipping/                     # ShipmentTrackerCard, DeliveryTimeline
+│   │   └── ui/                           # CustomCursor, MagneticButton, AnimatedCounters
+│   └── styles/                           # Global Tailwind CSS & animation tokens
+│
+├── ⚙️ BACKEND ARCHITECTURE (Business Logic, APIs, Security & Database)
+│   ├── app/api/                          # Secure Serverless Route Handlers
+│   │   ├── admin/                        # Orders, Shipments & Manual Courier Dispatch
+│   │   ├── checkout/                     # Server price validation & order generation
+│   │   ├── payment/verify/               # Cryptographic HMAC SHA-256 capture
+│   │   ├── shipments/                    # Live courier rates & tracking service
+│   │   └── webhooks/                     # Authoritative Razorpay & Shiprocket Webhooks
+│   ├── lib/                              # Domain Logic & Server Engines
+│   │   ├── db.ts                         # Prisma Client Database Singleton
+│   │   ├── pricing.ts                    # Dual-Persona Server Price Resolution Engine
+│   │   ├── tax.ts                        # Unified Indian GST Tax Matrix (CGST/SGST/IGST)
+│   │   ├── shipping/                     # Multi-carrier Registry & 19-state FSM
+│   │   └── email.ts                      # Resend Transactional Order Email Templates
+│   ├── prisma/                           # PostgreSQL Schema & Seed Data Engine
+│   │   ├── schema.prisma                 # Database Models (Orders, Shipments, Tiers)
+│   │   └── seed.ts                       # Seeder for Catalog, Categories & Rules
+│   └── auth.ts                           # NextAuth.js / Auth.js Session & RBAC Engine
+│
+└── 📚 DOCUMENTATION & CONFIGURATION
+    ├── docs/                             # Deep-dive engineering specifications
+    ├── public/                           # Static assets, product imagery, diagrams
+    └── DESIGN.md                         # Official UI/UX Design System Guidelines
 ```
 
 ---

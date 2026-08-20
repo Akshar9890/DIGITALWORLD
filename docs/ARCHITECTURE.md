@@ -116,3 +116,26 @@ sequenceDiagram
 1. **Server-Side Authority:** The client browser never dictates prices, tax breakdowns, or grand totals. Every checkout and quotation is verified on the server against active database rules.
 2. **Decoupled Monolith:** Business logic is organized in pure TypeScript modules (`lib/pricing.ts`, `lib/tax.ts`, `lib/shipping/`) with zero coupling to React rendering layers.
 3. **Pluggable Logistics:** The shipping abstraction layer allows seamless addition of new courier APIs without changing checkout or tracking controllers.
+
+---
+
+## 4. Frontend vs Backend Domain Architecture
+
+### 🎨 Frontend Domain (UI / UX / Client State)
+| Layer | Directory / Modules | Responsibility |
+|---|---|---|
+| **App Pages** | `app/(auth)/`, `app/account/`, `app/cart/`, `app/catalog/`, `app/checkout/`, `app/quotation/`, `app/track-order/` | Server-rendered pages & Client interactive views |
+| **Admin UI** | `app/(admin)/admin/`, `components/admin/` | Order management dashboard, manual courier dispatch modals |
+| **Component Library** | `components/ui/`, `components/home/`, `components/layout/`, `components/shipping/` | Atomic UI elements (MagneticButton, CustomCursor, Timeline, Estimator) |
+| **Design Tokens** | `styles/globals.css`, `tailwind.config.ts`, `DESIGN.md` | Colors, glassmorphism tokens, micro-interactions, responsive grids |
+
+### ⚙️ Backend Domain (APIs / Algorithms / Persistence / Integrations)
+| Layer | Directory / Modules | Responsibility |
+|---|---|---|
+| **API Route Handlers** | `app/api/checkout/`, `app/api/payment/verify/`, `app/api/shipments/`, `app/api/admin/` | Secure JSON endpoints, rate calculation, quotation generation |
+| **Authoritative Webhooks** | `app/api/webhooks/payment/razorpay/`, `app/api/webhooks/shipping/shiprocket/` | Asynchronous server-to-server webhook consumers |
+| **Domain Logic Engines** | `lib/pricing.ts`, `lib/tax.ts`, `lib/shipping/rate-calculator.ts` | Tier matching, Indian GST matrix, volumetric courier calculations |
+| **Logistics Brokerage** | `lib/shipping/registry.ts`, `lib/shipping/status-normalizer.ts` | Provider registry & 19-state courier lifecycle finite state machine |
+| **Data Persistence** | `prisma/schema.prisma`, `prisma/seed.ts`, `lib/db.ts` | PostgreSQL relational schema, Prisma Client singleton & seeding |
+| **Security & Auth** | `auth.ts`, `middleware.ts`, `lib/utils.ts` | NextAuth.js JWT session verification, RBAC guardrails, HMAC SHA-256 |
+
