@@ -59,7 +59,7 @@ export function getCourierCharge(
     };
   }
 
-  const calculationMode = config?.calculationMode ?? "weight";
+  const calculationMode = config?.calculationMode ?? "quantity";
 
   // 1. WEIGHT-BASED SLAB CALCULATION (1kg = ₹100, 2kg = ₹200, etc.)
   if (calculationMode === "weight") {
@@ -104,20 +104,11 @@ export function getCourierCharge(
     };
   }
 
-  // 2. QUANTITY-BASED SLAB CALCULATION (Fallback)
+  // 2. QUANTITY-BASED SLAB CALCULATION
   const c1to10 = Number(config?.charge1to10 ?? 100);
-  const c11to20 = Number(config?.charge11to20 ?? 200);
-  const c21to30 = Number(config?.charge21to30 ?? 300);
-  const freeQty = Number(config?.freeThresholdQty ?? 31);
-
-  if (totalQuantity > 100) {
-    return {
-      amount: 0,
-      isFree: true,
-      isBulk: true,
-      note: "Bulk order (Shipping quoted by team)",
-    };
-  }
+  const c11to20 = Number(config?.charge11to20 ?? 150);
+  const c21to30 = Number(config?.charge21to30 ?? 250);
+  const freeQty = Number(config?.freeThresholdQty ?? 100);
 
   if (totalQuantity >= freeQty) {
     return {

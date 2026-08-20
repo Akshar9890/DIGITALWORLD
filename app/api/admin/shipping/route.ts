@@ -6,7 +6,7 @@ import { z } from "zod";
 export const dynamic = "force-dynamic";
 
 const updateShippingSchema = z.object({
-  calculationMode: z.enum(["weight", "quantity"]).default("weight"),
+  calculationMode: z.enum(["weight", "quantity"]).default("quantity"),
   // Weight-based slabs (e.g. 1kg = ₹100, 2kg = ₹200)
   chargeUpTo1Kg: z.number().min(0).default(100),
   chargeUpTo2Kg: z.number().min(0).default(200),
@@ -18,9 +18,9 @@ const updateShippingSchema = z.object({
 
   // Quantity-based slabs
   charge1to10: z.number().min(0).default(100),
-  charge11to20: z.number().min(0).default(200),
-  charge21to30: z.number().min(0).default(300),
-  freeThresholdQty: z.number().min(1).default(31),
+  charge11to20: z.number().min(0).default(150),
+  charge21to30: z.number().min(0).default(250),
+  freeThresholdQty: z.number().min(1).default(100),
 });
 
 export async function GET() {
@@ -35,7 +35,7 @@ export async function GET() {
     });
 
     const defaultConfig = {
-      calculationMode: "weight",
+      calculationMode: "quantity",
       chargeUpTo1Kg: 100,
       chargeUpTo2Kg: 200,
       chargeUpTo3Kg: 300,
@@ -44,9 +44,9 @@ export async function GET() {
       ratePerKg: 100,
       freeShippingAboveAmount: 15000,
       charge1to10: 100,
-      charge11to20: 200,
-      charge21to30: 300,
-      freeThresholdQty: 31,
+      charge11to20: 150,
+      charge21to30: 250,
+      freeThresholdQty: 100,
     };
 
     if (!rule) {

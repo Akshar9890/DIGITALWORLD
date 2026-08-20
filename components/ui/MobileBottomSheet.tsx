@@ -10,9 +10,11 @@ import {
   FileText,
   Settings,
   LogOut,
-  ShoppingCart,
-  Flame,
   ChevronRight,
+  Scale,
+  Layers,
+  HelpCircle,
+  FileCode,
 } from "lucide-react";
 
 interface MobileBottomSheetProps {
@@ -21,12 +23,12 @@ interface MobileBottomSheetProps {
 }
 
 const navLinks = [
-  { href: "/catalog", label: "Catalog", icon: Flame },
-  { href: "/#applications", label: "Applications", icon: null },
-  { href: "/#how-it-works", label: "How It Works", icon: null },
-  { href: "/#technical", label: "Technical", icon: null },
-  { href: "/#reviews", label: "Reviews", icon: null },
-  { href: "/#faq", label: "FAQ", icon: null },
+  { href: "/", label: "Home", icon: Package },
+  { href: "/catalog", label: "Product Catalog", icon: Package },
+  { href: "/#applications", label: "Applications", icon: Layers },
+  { href: "/#how-it-works", label: "How It Works", icon: FileCode },
+  { href: "/#technical", label: "Technical Docs", icon: FileText },
+  { href: "/#faq", label: "FAQ", icon: HelpCircle },
 ];
 
 export function MobileBottomSheet({ isOpen, onClose }: MobileBottomSheetProps) {
@@ -71,7 +73,7 @@ export function MobileBottomSheet({ isOpen, onClose }: MobileBottomSheetProps) {
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 pb-4 border-b border-outline-variant/20">
-              <span className="font-headline-sm text-lg text-white">Menu</span>
+              <span className="font-headline-sm text-base text-white font-bold">DIGITALWORLD NAVIGATION</span>
               <button
                 onClick={onClose}
                 className="p-2 rounded-full hover:bg-surface-container transition-colors"
@@ -85,6 +87,7 @@ export function MobileBottomSheet({ isOpen, onClose }: MobileBottomSheetProps) {
               <div className="flex flex-col gap-1">
                 {navLinks.map((link) => {
                   const isActive = pathname === link.href;
+                  const Icon = link.icon;
                   return (
                     <Link
                       key={link.label}
@@ -92,11 +95,14 @@ export function MobileBottomSheet({ isOpen, onClose }: MobileBottomSheetProps) {
                       onClick={onClose}
                       className={`flex items-center justify-between rounded-xl px-4 py-3 transition-colors ${
                         isActive
-                          ? "bg-primary-container/15 text-white"
-                          : "text-on-surface-variant hover:bg-surface-container"
+                          ? "bg-primary-container/15 text-white font-semibold"
+                          : "text-on-surface-variant hover:bg-surface-container hover:text-white"
                       }`}
                     >
-                      <span className="text-sm font-medium">{link.label}</span>
+                      <div className="flex items-center gap-3">
+                        <Icon size={18} className="text-slate-gray" />
+                        <span className="text-sm font-medium">{link.label}</span>
+                      </div>
                       <ChevronRight size={16} className="text-slate-gray" />
                     </Link>
                   );
@@ -109,10 +115,10 @@ export function MobileBottomSheet({ isOpen, onClose }: MobileBottomSheetProps) {
               <Link
                 href="/quotation"
                 onClick={onClose}
-                className="btn-primary w-full gap-2 py-3 text-sm"
+                className="btn-primary w-full gap-2 py-3 text-xs tracking-wider font-bold"
               >
-                <FileText size={18} />
-                GET INSTANT QUOTATION
+                <FileText size={16} />
+                <span>GET B2B INSTANT QUOTATION</span>
               </Link>
             </div>
 
@@ -121,37 +127,37 @@ export function MobileBottomSheet({ isOpen, onClose }: MobileBottomSheetProps) {
               {session ? (
                 <div className="flex flex-col gap-2">
                   <div className="px-2 pb-2">
-                    <p className="text-sm text-white truncate">{session.user.name}</p>
+                    <p className="text-sm text-white font-bold truncate">{session.user.name}</p>
                     <p className="text-xs text-slate-gray truncate">{session.user.email}</p>
                   </div>
                   <Link
                     href="/account/orders"
                     onClick={onClose}
-                    className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
+                    className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-xs text-on-surface-variant hover:bg-surface-container transition-colors"
                   >
-                    <Package size={18} /> My Orders
+                    <Package size={16} /> My Orders
                   </Link>
                   <Link
                     href="/account/quotes"
                     onClick={onClose}
-                    className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-on-surface-variant hover:bg-surface-container transition-colors"
+                    className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-xs text-on-surface-variant hover:bg-surface-container transition-colors"
                   >
-                    <FileText size={18} /> My Quotations
+                    <FileText size={16} /> My Quotations
                   </Link>
                   {isAdmin && (
                     <Link
                       href="/admin"
                       onClick={onClose}
-                      className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-status-error hover:bg-error-container/20 transition-colors"
+                      className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-xs text-status-error hover:bg-error-container/20 transition-colors"
                     >
-                      <Settings size={18} /> Admin Dashboard
+                      <Settings size={16} /> Admin Dashboard
                     </Link>
                   )}
                   <button
                     onClick={() => { signOut(); onClose(); }}
-                    className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-slate-gray hover:bg-surface-container transition-colors mt-1"
+                    className="flex items-center gap-3 rounded-xl px-4 py-2.5 text-xs text-slate-gray hover:bg-surface-container transition-colors mt-1"
                   >
-                    <LogOut size={18} /> Sign Out
+                    <LogOut size={16} /> Sign Out
                   </button>
                 </div>
               ) : (

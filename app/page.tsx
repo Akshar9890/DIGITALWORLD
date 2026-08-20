@@ -19,10 +19,10 @@ export default function HomePage() {
       {/* Risk / Problem Applications */}
       <ProblemRiskSection />
 
-      {/* How It Works Engineering Timeline */}
+      {/* How It Works Interactive 6-Stage Timeline */}
       <HowItWorksTimeline />
 
-      {/* Product Pricing Calculator & Tiers */}
+      {/* Product Pricing Calculator & Quantity Tiers */}
       <HomePricingCalculator />
 
       {/* Technical Documents, Reviews & FAQ Accordions */}
@@ -38,10 +38,10 @@ export default function HomePage() {
               </div>
               <div>
                 <span className="font-label-caps text-xs text-tertiary tracking-widest block uppercase">
-                  INDUSTRIAL CONTRACTORS & DISTRIBUTORS
+                  INDUSTRIAL CONTRACTORS &amp; DISTRIBUTORS
                 </span>
                 <h2 className="font-headline-md text-2xl lg:text-3xl text-white font-bold mt-1">
-                  Apply for Wholesale & B2B Partner Pricing
+                  Apply for Wholesale &amp; B2B Partner Pricing
                 </h2>
                 <p className="text-body-technical text-on-surface-variant mt-2 max-w-2xl">
                   Register your company GSTIN to receive custom volume tiers, credit terms, and dedicated technical account support.

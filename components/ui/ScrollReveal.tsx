@@ -21,7 +21,7 @@ export function ScrollReveal({
   once = true,
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once, margin: "50px" });
+  const isInView = useInView(ref, { once });
 
   const getVariants = () => {
     switch (variant) {
@@ -88,7 +88,7 @@ export function StaggerContainer({
   className = "",
 }: StaggerContainerProps) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: "50px" });
+  const isInView = useInView(ref, { once: true });
 
   return (
     <motion.div

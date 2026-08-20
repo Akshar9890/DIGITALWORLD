@@ -16,19 +16,22 @@
 
 1. [Executive Summary & Overview](#1-executive-summary--overview)
 2. [Core Business Vision & Dual-Persona Architecture](#2-core-business-vision--dual-persona-architecture)
-3. [System Architecture & Data Flow](#3-system-architecture--data-flow)
+3. [System Architecture & 3D Isometric Data Flow](#3-system-architecture--3d-isometric-data-flow)
+   - [3.1 3D Layered Isometric Architecture](#31-3d-layered-isometric-architecture)
+   - [3.2 End-to-End Reactive Data Flow](#32-end-to-end-reactive-data-flow)
 4. [Complete Repository Structure](#4-complete-repository-structure)
 5. [Technology Stack & Core Dependencies](#5-technology-stack--core-dependencies)
 6. [Database Schema & Data Models (Prisma)](#6-database-schema--data-models-prisma)
-7. [Core Algorithms & Business Logic](#7-core-algorithms--business-logic)
-   - [7.1 Dual-Persona Server-Side Price Resolution Engine (`resolvePrice`)](#71-dual-persona-server-side-price-resolution-engine-resolveprice)
-   - [7.2 Quantity Tier Matching Logic (`getPriceForQuantity`)](#72-quantity-tier-matching-logic-getpriceforquantity)
-   - [7.3 Nudge & Tier Unlock Hint Algorithm (`getNextTierHint`)](#73-nudge--tier-unlock-hint-algorithm-getnexttierhint)
+7. [Core Algorithms & Mathematical Logic](#7-core-algorithms--mathematical-logic)
+   - [7.1 Dual-Persona Server-Side Price Resolution Engine (`resolvePrice`)](#71-dual-persona-server-side-dynamic-price-resolution-engine-resolveprice)
+   - [7.2 Dynamic Quantity Tier Matching Algorithm (`getPriceForQuantity`)](#72-dynamic-quantity-tier-matching-algorithm-getpriceforquantity)
+   - [7.3 Tier Unlock Nudge & Upsell Incentive Algorithm (`getNextTierHint`)](#73-tier-unlock-nudge--upsell-incentive-algorithm-getnexttierhint)
    - [7.4 Unified Indian GST Tax Calculation Engine (`computeInvoiceTotals`)](#74-unified-indian-gst-tax-calculation-engine-computeinvoicetotals)
-   - [7.5 Courier Logistics & Shipping Abstraction Layer (`ShippingRegistry`)](#75-courier-logistics--shipping-abstraction-layer-shippingregistry)
-   - [7.6 Indian Currency Amount-to-Words Converter (`amountToWords`)](#76-indian-currency-amount-to-words-converter-amounttowords)
-   - [7.7 Razorpay Payment Security & Authoritative Webhook Engine](#77-razorpay-payment-security--authoritative-webhook-engine)
-   - [7.8 B2B Wholesale Onboarding & Approval Workflow](#78-b2b-wholesale-onboarding--approval-workflow)
+   - [7.5 Multi-Carrier Courier Brokerage & Shipping Engine (`ShippingRegistry`)](#75-multi-carrier-courier-brokerage--shipping-engine-shippingregistry)
+   - [7.6 20-State Courier Status Normalization Finite State Machine](#76-20-state-courier-status-normalization-finite-state-machine)
+   - [7.7 Indian Currency Amount-to-Words Algorithm (`amountToWords`)](#77-indian-currency-amount-to-words-algorithm-amounttowords)
+   - [7.8 Authoritative Cryptographic HMAC-SHA256 Payment Verification & Idempotency](#78-authoritative-cryptographic-hmac-sha256-payment-verification--idempotency)
+   - [7.9 B2B Wholesale Onboarding & Approval Workflow](#79-b2b-wholesale-onboarding--approval-workflow)
 8. [Application User Journeys](#8-application-user-journeys)
 9. [API Route Directory & Endpoints](#9-api-route-directory--endpoints)
 10. [Design System & UI/UX Standards](#10-design-system--uiux-standards)
@@ -78,41 +81,111 @@ DigitalWorld eliminates pricing friction through a **single source of truth** se
 
 ---
 
-## 3. System Architecture & Data Flow
+## 3. System Architecture & 3D Isometric Data Flow
 
-DigitalWorld is built on a modern, decoupled monolithic structure powered by Next.js 14 App Router and Prisma ORM:
+DigitalWorld is built on a high-throughput, decoupled monolithic architecture powered by Next.js 14 App Router, Prisma ORM, and resilient cloud integration brokers.
+
+### 3.1 3D Layered Isometric Architecture
 
 ```
-[ Client Browser / Customer / Admin ]
-       │
-       ├── HTTPS / React Server Components / Server Actions
-       ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                        Next.js 14 App Router                           │
-│  ┌───────────────────────┐ ┌──────────────────────┐ ┌──────────────┐  │
-│  │ Storefront Pages (SSR)│ │ B2B Portal Routes    │ │ Admin Panel  │  │
-│  └───────────┬───────────┘ └──────────┬───────────┘ └──────┬───────┘  │
-│              └────────────────────────┼────────────────────┘          │
-│                                       ▼                               │
-│                         Service & Logic Layer                         │
-│    ┌──────────────┐   ┌─────────────┐   ┌────────────┐   ┌─────────┐  │
-│    │ Pricing (ts) │   │ Tax/GST (ts)│   │Shipping(ts)│   │Auth (ts)│  │
-│    └──────┬───────┘   └──────┬──────┘   └─────┬──────┘   └────┬────┘  │
-└───────────┼──────────────────┼────────────────┼───────────────┼───────┘
-            ▼                  ▼                ▼               ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                     Prisma ORM & PostgreSQL Database                   │
-│   • Users & Roles    • Products & Tiers   • Orders & Items             │
-│   • Shipments & Tracking Events           • Invoices & Quotations      │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-       ┌────────────────────────────┼────────────────────────────┐
-       ▼                            ▼                            ▼
-┌──────────────┐            ┌──────────────┐            ┌────────────────┐
-│   Razorpay   │            │  Shiprocket  │            │   Resend API   │
-│ Payment API  │            │ Logistics    │            │ Transactional  │
-│ & Webhooks   │            │ Multi-Courier│            │ Order Emails   │
-└──────────────┘            └──────────────┘            └────────────────┘
+                                  ==================================================
+                                  ▼  TIER 1: CLIENT INTERFACE & PRESENTATION LAYER  ▲
+                                  ==================================================
+                                    /                                             /│
+                                   /  ┌───────────────┐   ┌─────────────────┐    / │
+                                  /   │  B2C Visitor  │   │  B2B Wholesale  │   /  │
+                                 /    │  Storefront   │   │  Portal (KYC)   │  /   │
+                                /     └───────┬───────┘   └────────┬────────┘ /    │
+                               /              │  ┌───────────────┐ │         /     │
+                              /               └─▶│  Admin Panel  │◀┘        /      │
+                             /                   │  & Logistics  │         /       │
+                            /                    └───────┬───────┘        /        │
+                           /─────────────────────────────┼───────────────/         │
+                           │                             │               │         │
+                           │                             ▼ (HTTPS/WSS)   │         │
+                           │      ==================================================
+                           │      ▼  TIER 2: EDGE ROUTING & APPLICATION RUNTIME    ▲
+                           │      ==================================================
+                           │        /                                             /│
+                           │       /  ┌─────────────────────────────────────┐    / │
+                           │      /   │      Next.js 14 App Router Core     │   /  │
+                           │     /    │  ┌──────────────┐ ┌───────────────┐ │  /   │
+                           │    /     │  │ Server Action│ │ API Handlers  │ │ /    │
+                           │   /      │  │ & SSR Pages  │ │ (/api/v1/*)   │ │/     │
+                           │  /       │  └───────┬──────┘ └───────┬───────┘ │      │
+                           │ /        └──────────┼────────────────┼─────────┘      │
+                           │/────────────────────┼────────────────┼────────────────│
+                           │                     │                │                │
+                           │                     ▼                ▼                │
+                           │      ==================================================
+                           │      ▼  TIER 3: CORE ALGORITHM & DOMAIN SERVICE MESH  ▲
+                           │      ==================================================
+                           │        /                                             /│
+                           │       /  ┌──────────────┐   ┌──────────────────┐    / │
+                           │      /   │ resolvePrice │   │computeInvoiceTot.│   /  │
+                           │     /    │ Engine ($7.1)│   │  GST Matrix ($7.4)│  /   │
+                           │    /     └───────┬──────┘   └────────┬─────────┘ /    │
+                           │   /              │  ┌──────────────┐ │          /     │
+                           │  /               └─▶│ShippingRegist│◀┘         /      │
+                           │ /                   │Courier Layer │          /       │
+                           │/                    └───────┬──────┘         /        │
+                           │─────────────────────────────┼───────────────/         │
+                           │                             │                         │
+                           │                             ▼ (Prisma / API SDKs)     │
+                           │      ==================================================
+                           │      ▼  TIER 4: PERSISTENCE & MULTI-CLOUD INTEGRATIONS▲
+                           │      ==================================================
+                           │        /                                             /
+                           │       /  ┌──────────────┐   ┌──────────────────┐    /
+                           │      /   │  PostgreSQL  │   │     Razorpay     │   /
+                           │     /    │  Database    │   │  Payment Gateway │  /
+                           │    /     └───────┬──────┘   └────────┬─────────┘ /
+                           │   /              │  ┌──────────────┐ │          /
+                           │  /               └─▶│  Shiprocket  │◀┘         /
+                           │ /                   │Live Logistics│          /
+                           │/                    └──────────────┘         /
+                           ================================================
+```
+
+### 3.2 End-to-End Reactive Data Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Customer as 👤 Customer / B2B Buyer
+    participant Client as 🖥️ Next.js Client (UI/Cart)
+    participant Edge as ⚡ Next.js App Router (Server)
+    participant Pricing as 🧮 Pricing Engine (lib/pricing.ts)
+    participant Tax as 🏛️ GST Engine (lib/tax.ts)
+    participant DB as 🗄️ PostgreSQL (Prisma)
+    participant Razorpay as 💳 Razorpay Gateway
+    participant Logistics as 🚚 Logistics (Shiprocket/Manual)
+
+    Customer->>Client: Selects Product & Quantity (e.g., Qty = 50)
+    Client->>Edge: POST /api/checkout (Payload: items, address)
+    activate Edge
+    Edge->>Pricing: resolvePrice(productId, qty, userContext)
+    Pricing->>DB: Query ProductPrice & PricingTier
+    DB-->>Pricing: Active Tiers [1-9: ₹300, 10-49: ₹275, 50-99: ₹225, ...]
+    Pricing-->>Edge: Resolved Unit Price: ₹225 | Subtotal: ₹11,250
+    Edge->>Tax: computeInvoiceTotals(subtotal, shipping, sellerState, buyerState)
+    Tax-->>Edge: GST Breakdown (CGST+SGST or IGST 18%) + Grand Total
+    Edge->>Razorpay: orders.create({ amount: GrandTotalInPaise })
+    Razorpay-->>Edge: razorpay_order_id (rzp_order_xxx)
+    Edge->>DB: Create Order (status: PENDING_PAYMENT)
+    Edge-->>Client: Order Created + Checkout Options
+    deactivate Edge
+    Client->>Customer: Render Razorpay Standard Checkout Modal
+    Customer->>Razorpay: Authorize Payment (UPI / Card / Netbanking)
+    Razorpay-->>Edge: Webhook: payment.captured (HMAC SHA-256 Signed)
+    activate Edge
+    Edge->>Edge: Verify Signature (crypto.timingSafeEqual)
+    Edge->>DB: Update Order (PAID) & Create Invoice Record
+    Edge->>Logistics: ShippingRegistry.createShipment(orderData)
+    Logistics-->>Edge: AWB Number & Tracking URL
+    Edge->>DB: Create Shipment (status: SHIPMENT_CREATED)
+    deactivate Edge
+    Edge-->>Customer: Transactional Order Confirmation Email + Invoice PDF
 ```
 
 ---
@@ -268,30 +341,368 @@ model ShipmentTrackingEvent {
 
 ---
 
-## 7. Core Algorithms & Business Logic
+## 7. Core Algorithms & Mathematical Logic
 
-### 7.1 Dual-Persona Server-Side Price Resolution Engine (`resolvePrice`)
+DigitalWorld implements 8 authoritative algorithms across pricing, tax engineering, multi-carrier courier dispatch, and cryptographic payment verification.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DIGITALWORLD ALGORITHM SUITE                       │
+├──────────────────────┬──────────────────────┬───────────────────────────────┤
+│ 7.1 Dynamic Pricing  │ 7.2 Tier Search      │ 7.3 Unlock Nudge & Incentives │
+│ 7.4 GST Tax Matrix   │ 7.5 Logistics Engine │ 7.6 20-State FSM Normalizer   │
+│ 7.7 Currency Words   │ 7.8 HMAC Security    │ 7.9 B2B Wholesale Verification│
+└──────────────────────┴──────────────────────┴───────────────────────────────┘
+```
+
+---
+
+### 7.1 Dual-Persona Server-Side Dynamic Price Resolution Engine (`resolvePrice`)
 **Location:** [`lib/pricing.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/pricing.ts)
-Ensures client cart tamper-resistance by resolving prices against active database tiers and user roles.
+
+#### Mathematical Model
+Let $P$ be a product with pricing tiers $T = \{t_1, t_2, \dots, t_k\}$ ordered such that $t_i.\text{minQty} < t_{i+1}.\text{minQty}$.
+For customer quantity $Q \in \mathbb{N}^+$ and buyer context $C = \langle \text{role}, \text{assignedTierId} \rangle$:
+
+$$\text{Matched Tier } t^* = \arg\max_{t \in T} \{ t.\text{minQty} \mid t.\text{minQty} \le Q \land (t.\text{maxQty} = \text{null} \lor Q \le t.\text{maxQty}) \}$$
+
+If $\text{role} = \text{wholesale\_approved}$ and $\text{assignedTierId} \neq \text{null}$, the effective price $P_{\text{eff}}$ is resolved with wholesale overriding:
+
+$$P_{\text{eff}} = \begin{cases} 
+\min(t^*.\text{pricePerUnit}, P_{\text{assigned}}), & \text{if } \text{role} = \text{wholesale\_approved} \land \text{assignedPrice exists} \\
+t^*.\text{pricePerUnit}, & \text{otherwise}
+\end{cases}$$
+
+$$\text{Subtotal} = P_{\text{eff}} \times Q$$
+
+```mermaid
+flowchart TD
+    Start([Input: productId, quantity Q, userContext]) --> FetchTiers[(Fetch ProductPrices & Tiers from DB)]
+    FetchTiers --> Sort[Sort Tiers Ascending by minQty]
+    Sort --> FilterMatch{Filter Tiers where:<br/>minQty <= Q AND (maxQty == null OR Q <= maxQty)}
+    FilterMatch --> FindLargest[Select Last Match t*]
+    FindLargest --> CheckWholesale{Role == wholesale_approved<br/>AND assignedTierId != null?}
+    CheckWholesale -- Yes --> ComparePrices{assignedPrice.pricePerUnit < t*.pricePerUnit?}
+    ComparePrices -- Yes --> Override[Set Chosen Price = assignedPrice]
+    ComparePrices -- No --> Keep[Set Chosen Price = t*.pricePerUnit]
+    CheckWholesale -- No --> Keep
+    Override --> CalcSubtotal[Subtotal = Chosen Price * Q]
+    Keep --> CalcSubtotal
+    CalcSubtotal --> ReturnResult([Return PriceResult: unitPrice, tierId, subtotal])
+```
+
+#### TypeScript Implementation
+```typescript
+export async function resolvePrice(
+  productId: string,
+  quantity: number,
+  context: PricingContext
+): Promise<PriceResult> {
+  const { role, assignedTierId } = context;
+
+  const productPrices = await prisma.productPrice.findMany({
+    where: { productId },
+    include: { tier: true },
+    orderBy: { tier: { minQty: "asc" } },
+  });
+
+  if (productPrices.length === 0) {
+    throw new Error(`No pricing found for product ${productId}`);
+  }
+
+  let matched = getPriceForQuantity(
+    productPrices.map((p) => ({
+      tierId: p.tierId,
+      tierName: p.tier.name,
+      minQty: p.tier.minQty,
+      maxQty: p.tier.maxQty,
+      pricePerUnit: Number(p.pricePerUnit),
+    })),
+    quantity
+  );
+
+  if (role === "wholesale_approved" && assignedTierId) {
+    const assignedPrice = productPrices.find((p) => p.tierId === assignedTierId);
+    if (
+      assignedPrice &&
+      (!matched || Number(assignedPrice.pricePerUnit) < matched.pricePerUnit)
+    ) {
+      matched = {
+        tierId: assignedPrice.tierId,
+        tierName: assignedPrice.tier.name,
+        minQty: assignedPrice.tier.minQty,
+        maxQty: assignedPrice.tier.maxQty,
+        pricePerUnit: Number(assignedPrice.pricePerUnit),
+      };
+    }
+  }
+
+  const chosen = matched || {
+    tierId: productPrices[0].tierId,
+    tierName: productPrices[0].tier.name,
+    minQty: productPrices[0].tier.minQty,
+    maxQty: productPrices[0].tier.maxQty,
+    pricePerUnit: Number(productPrices[0].pricePerUnit),
+  };
+
+  return {
+    unitPrice: chosen.pricePerUnit,
+    tierId: chosen.tierId,
+    tierName: chosen.tierName,
+    quantity,
+    subtotal: chosen.pricePerUnit * quantity,
+  };
+}
+```
+
+---
+
+### 7.2 Dynamic Quantity Tier Matching Algorithm (`getPriceForQuantity`)
+**Location:** [`lib/pricing.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/pricing.ts#L63-L78)
+
+Computes the active tier in $O(N \log N)$ time (where $N \le 10$ is the number of catalog tiers). Guarantees consistent evaluation across Cart, Instant Quotation, and Server Checkout.
+
+```typescript
+export function getPriceForQuantity(
+  tiers: TierLike[],
+  quantity: number
+): TierLike | null {
+  if (!tiers || tiers.length === 0) return null;
+  const sorted = [...tiers].sort((a, b) => a.minQty - b.minQty);
+
+  const match = sorted
+    .filter(
+      (t) => quantity >= t.minQty && (t.maxQty === null || quantity <= t.maxQty)
+    )
+    .pop(); // Highest minQty range that encloses quantity
+
+  return match || null;
+}
+```
+
+---
+
+### 7.3 Tier Unlock Nudge & Upsell Incentive Algorithm (`getNextTierHint`)
+**Location:** [`lib/pricing.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/pricing.ts#L117-L128)
+
+Maximizes average order volume (AOV) by identifying when a customer is close to unlocking a cheaper tier:
+
+$$\Delta Q = t_{\text{next}}.\text{minQty} - Q$$
+
+$$\text{Hint Condition: } \begin{cases} 
+\text{Show Nudge with } \Delta Q, & \text{if } 1 \le \Delta Q \le 3 \\
+\text{Suppress (prevent notification fatigue)}, & \text{if } \Delta Q > 3 \lor t_{\text{next}} = \emptyset 
+\end{cases}$$
+
+$$\text{Projected Savings} = (Q \times P_{\text{current}}) - ((Q + \Delta Q) \times P_{\text{next}})$$
+
+```typescript
+export function getNextTierHint(
+  tiers: TierLike[],
+  quantity: number
+): TierUnlockHint | null {
+  const sorted = [...tiers].sort((a, b) => a.minQty - b.minQty);
+  const next = sorted.find((t) => t.minQty > quantity);
+  if (!next) return null;
+
+  const piecesToUnlock = next.minQty - quantity;
+  if (piecesToUnlock > 3) return null; // Suppress if > 3 units away
+
+  return { piecesToUnlock, tier: next };
+}
+```
+
+---
 
 ### 7.4 Unified Indian GST Tax Calculation Engine (`computeInvoiceTotals`)
-**Location:** [`lib/tax.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/tax.ts)
-Single authoritative function used across checkout, Razorpay order creation, order storage, and invoice generation:
-- **Intra-State (Seller State === Buyer State):** Split 18% GST into CGST (9%) + SGST (9%).
-- **Inter-State (Seller State !== Buyer State):** Applied as IGST (18%).
-- Computes goods GST, shipping GST, and exact Grand Total with zero rounding discrepancy.
+**Location:** [`lib/tax.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/tax.ts#L54-L139)
 
-### 7.5 Courier Logistics & Shipping Abstraction Layer (`ShippingRegistry`)
+#### State Normalization & Tax Partition Logic
+Let $S_{\text{seller}}$ and $S_{\text{buyer}}$ be the normalized state strings:
+
+$$\text{Normalize}(S) = \text{trim}(\text{lowercase}(S))$$
+
+$$\text{isSameState} = (\text{Normalize}(S_{\text{seller}}) = \text{Normalize}(S_{\text{buyer}}))$$
+
+$$\text{Goods GST Rate } r = 0.18, \quad \text{Shipping GST Rate } r_s = 0.18$$
+
+$$\begin{aligned}
+\text{If } \text{isSameState} = \text{true}: \quad & \text{CGST} = \text{round}_2\left(\text{Subtotal} \times \frac{r}{2}\right), \quad \text{SGST} = \text{round}_2\left(\text{Subtotal} \times \frac{r}{2}\right), \quad \text{IGST} = 0 \\
+\text{If } \text{isSameState} = \text{false}: \quad & \text{CGST} = 0, \quad \text{SGST} = 0, \quad \text{IGST} = \text{round}_2(\text{Subtotal} \times r)
+\end{aligned}$$
+
+$$\text{Shipping GST} = \text{round}_2(\text{ShippingCost} \times r_s)$$
+
+$$\text{Grand Total} = \text{round}_2\left(\text{Subtotal} + \text{Total Goods GST} + \text{ShippingCost} + \text{Shipping GST}\right)$$
+
+```
+                                    ┌────────────────────────┐
+                                    │ Input: Subtotal, States│
+                                    └───────────┬────────────┘
+                                                │
+                                  Normalize(Seller) == Normalize(Buyer)?
+                                               / \
+                                       YES    /   \    NO
+                                             /     \
+                       ┌────────────────────┐       ┌────────────────────┐
+                       │ Intra-State Branch │       │ Inter-State Branch │
+                       ├────────────────────┤       ├────────────────────┤
+                       │ CGST = 9%          │       │ CGST = 0%          │
+                       │ SGST = 9%          │       │ SGST = 0%          │
+                       │ IGST = 0%          │       │ IGST = 18%         │
+                       └─────────┬──────────┘       └─────────┬──────────┘
+                                 │                            │
+                                 └──────────────┬─────────────┘
+                                                ▼
+                                    ┌────────────────────────┐
+                                    │ Add Shipping Cost + 18%│
+                                    │ Execute roundToTwo()   │
+                                    │ Generate Words (INR)   │
+                                    └────────────────────────┘
+```
+
+---
+
+### 7.5 Multi-Carrier Courier Brokerage & Shipping Engine (`ShippingRegistry`)
 **Location:** [`lib/shipping/`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/shipping/)
-- **Provider Interface:** `checkServiceability()`, `getRates()`, `createShipment()`, `trackShipment()`, `cancelShipment()`.
-- **Status Normalization:** Maps provider-specific webhooks into 20 standardized `ShipmentStatus` lifecycle states.
-- **Admin Dispatch Modal:** Supports one-click live rate selection or offline manual AWB entry.
 
-### 7.7 Razorpay Payment Security & Authoritative Webhook Engine
-**Location:** [`app/api/payment/verify/route.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/app/api/payment/verify/route.ts) & [`app/api/webhooks/payment/razorpay/route.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/app/api/webhooks/payment/razorpay/route.ts)
-- Enforces `request.orderId -> db.order -> payment.razorpayOrderId === request.razorpay_order_id`.
-- Validates HMAC SHA-256 signatures with `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET`.
-- Handles asynchronous webhook events (`order.paid`, `payment.captured`, `payment.failed`) with complete idempotency.
+#### Volumetric Weight & Multi-Provider Rate Selector
+For carton dimensions $L \times W \times H$ in centimeters and actual weight $W_{\text{actual}}$ in kilograms:
+
+$$W_{\text{volumetric}} = \frac{L \times W \times H}{5000}, \quad W_{\text{chargeable}} = \max(W_{\text{actual}}, W_{\text{volumetric}})$$
+
+```typescript
+export class ShippingRegistry {
+  private static providers: Map<string, ShippingProvider> = new Map();
+
+  public static register(name: string, provider: ShippingProvider) {
+    this.providers.set(name.toLowerCase(), provider);
+  }
+
+  public static async getBestRates(
+    pickupPincode: string,
+    deliveryPincode: string,
+    weightGrams: number,
+    cod: boolean
+  ): Promise<CourierOption[]> {
+    const activeProviders = Array.from(this.providers.values());
+    const ratePromises = activeProviders.map((p) =>
+      p.getRates(pickupPincode, deliveryPincode, weightGrams, cod).catch(() => [])
+    );
+    const results = await Promise.all(ratePromises);
+    // Flatten and sort by lowest rate, then shortest estimated delivery days
+    return results.flat().sort((a, b) => a.rate - b.rate || a.etdDays - b.etdDays);
+  }
+}
+```
+
+---
+
+### 7.6 20-State Courier Status Normalization Finite State Machine
+**Location:** [`lib/shipping/status-normalizer.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/shipping/status-normalizer.ts)
+
+Maps raw webhooks from Shiprocket, Delhivery, Blue Dart, and manual courier dispatches into a deterministic state lifecycle:
+
+```mermaid
+stateDiagram-v2
+    [*] --> ORDER_PLACED: Checkout Completed
+    ORDER_PLACED --> PAYMENT_CONFIRMED: Razorpay Captured
+    PAYMENT_CONFIRMED --> PROCESSING: Warehouse Picklist
+    PROCESSING --> PACKED: Barcode Scanned
+    PACKED --> SHIPMENT_CREATED: AWB Assigned
+    SHIPMENT_CREATED --> PICKUP_SCHEDULED: Manifest Generated
+    PICKUP_SCHEDULED --> PICKED_UP: Courier Scan
+    PICKED_UP --> IN_TRANSIT: Line Haul Transit
+    IN_TRANSIT --> REACHED_DESTINATION: Destination Hub Scan
+    REACHED_DESTINATION --> OUT_FOR_DELIVERY: Assigned to Courier Agent
+    OUT_FOR_DELIVERY --> DELIVERED: OTP / Signature Verified
+    DELIVERED --> [*]
+
+    OUT_FOR_DELIVERY --> NDR: Delivery Attempt Failed
+    NDR --> OUT_FOR_DELIVERY: Re-attempt Scheduled
+    NDR --> RTO_INITIATED: Max Retries Exceeded
+    RTO_INITIATED --> RTO_IN_TRANSIT: Reverse Line Haul
+    RTO_IN_TRANSIT --> RTO_DELIVERED: Returned to Warehouse
+    RTO_DELIVERED --> [*]
+
+    IN_TRANSIT --> DELAYED: Weather/Logistics Delay
+    DELAYED --> IN_TRANSIT: Transit Resumed
+    IN_TRANSIT --> LOST: Insurance Claim
+    IN_TRANSIT --> DAMAGED: Exception Flagged
+```
+
+---
+
+### 7.7 Indian Currency Amount-to-Words Algorithm (`amountToWords`)
+**Location:** [`lib/tax.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/lib/tax.ts#L181-L224)
+
+Decomposes 64-bit floating point numbers into Indian numbering units (Crore $\to$ Lakh $\to$ Thousand $\to$ Hundred $\to$ Tens $\to$ Units $\to$ Paise) for legal Indian GST compliance.
+
+```typescript
+function numToWords(n: number): string {
+  if (n === 0) return "";
+  if (n < 20) return ones[n] + " ";
+  if (n < 100) return tens[Math.floor(n / 10)] + " " + ones[n % 10] + " ";
+  if (n < 1000)
+    return ones[Math.floor(n / 100)] + " Hundred " + numToWords(n % 100);
+  if (n < 100000)
+    return numToWords(Math.floor(n / 1000)) + " Thousand " + numToWords(n % 1000);
+  if (n < 10000000)
+    return numToWords(Math.floor(n / 100000)) + " Lakh " + numToWords(n % 100000);
+  return numToWords(Math.floor(n / 10000000)) + " Crore " + numToWords(n % 10000000);
+}
+
+export function amountToWords(amount: number): string {
+  const rounded = Math.round(amount * 100) / 100;
+  const rupees = Math.floor(rounded);
+  const paise = Math.round((rounded - rupees) * 100);
+
+  let result = "Rupees " + (rupees === 0 ? "Zero " : numToWords(rupees).trim() + " ");
+  if (paise > 0) result += `and ${numToWords(paise).trim()} Paise `;
+  return result.trim() + " Only";
+}
+```
+
+---
+
+### 7.8 Authoritative Cryptographic HMAC-SHA256 Payment Verification & Idempotency
+**Location:** [`app/api/payment/verify/route.ts`](file:///Users/akshar/Desktop/DIGITALWORLD/digitalworld-app/app/api/payment/verify/route.ts)
+
+Protects against timing attacks and double-capture through constant-time byte comparisons and transactional database idempotency locks:
+
+$$\text{Signature}_{\text{expected}} = \text{HMAC-SHA256}(\text{order\_id} \mathbin{\Vert} \text{"|"} \mathbin{\Vert} \text{payment\_id}, K_{\text{secret}})$$
+
+$$\text{Valid} \iff \text{timingSafeEqual}(\text{Buffer}(\text{Signature}_{\text{expected}}), \text{Buffer}(\text{Signature}_{\text{received}}))$$
+
+```typescript
+const generatedSignature = crypto
+  .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+  .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+  .digest("hex");
+
+const isAuthentic = crypto.timingSafeEqual(
+  Buffer.from(generatedSignature, "utf-8"),
+  Buffer.from(razorpay_signature, "utf-8")
+);
+
+if (!isAuthentic) {
+  throw new Error("Cryptographic Signature Mismatch — Payment Rejected");
+}
+```
+
+---
+
+### 7.9 B2B Wholesale Onboarding & Approval Workflow
+
+```mermaid
+flowchart LR
+    A[B2B Application Submitted] --> B[GSTIN Check 07AAAAA0000A1Z5]
+    B --> C{Admin Review}
+    C -- Approved --> D[Role: wholesale_approved]
+    D --> E[Unlock Custom Volume Tier]
+    E --> F[Instant PDF Quotations with HSN]
+    C -- Rejected --> G[Role: b2c_retailer]
+```
 
 ---
 

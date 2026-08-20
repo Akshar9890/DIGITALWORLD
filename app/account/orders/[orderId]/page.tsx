@@ -221,24 +221,56 @@ export default async function OrderDetailPage({
         {/* Payment Summary */}
         <div className="bento-card p-6">
           <h3 className="font-headline-sm text-white mb-4 flex items-center gap-2">
-            <CreditCard size={18} className="text-tertiary" /> Payment Summary
+            <CreditCard size={18} className="text-tertiary" /> Payment &amp; Tax Summary
           </h3>
-          <div className="flex flex-col gap-2 text-body-technical">
+          <div className="flex flex-col gap-2 text-body-technical text-xs md:text-sm">
             <div className="flex justify-between">
-              <span className="text-slate-gray">Subtotal</span>
-              <span className="text-white">{formatINR(Number(order.subtotal))}</span>
+              <span className="text-slate-gray">Taxable Subtotal</span>
+              <span className="text-white font-medium">{formatINR(Number(order.subtotal))}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-gray">Shipping</span>
+              <span className="text-slate-gray">Shipping &amp; Handling</span>
               <span className="text-white">{formatINR(Number(order.shippingAmount))}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-gray">GST</span>
-              <span className="text-white">{formatINR(Number(order.totalGST))}</span>
+
+            {/* Statutory Tax Breakdown */}
+            <div className="py-2 border-y border-outline-variant/15 flex flex-col gap-1.5 bg-surface-container/40 p-2.5 rounded-lg">
+              <div className="flex justify-between text-slate-gray text-[11px]">
+                <span>Place of Supply</span>
+                <span className="font-bold text-white">{order.buyerState || "Gujarat"}</span>
+              </div>
+              <div className="flex justify-between text-slate-gray text-[11px]">
+                <span>Applicable GST Rate</span>
+                <span className="font-mono text-tertiary font-bold">18% (HSN 8424)</span>
+              </div>
+
+              {order.isSameState ? (
+                <>
+                  <div className="flex justify-between text-xs text-on-surface-variant">
+                    <span>CGST (9%)</span>
+                    <span className="font-mono text-white">{formatINR(Number(order.cgstAmount))}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-on-surface-variant">
+                    <span>SGST (9%)</span>
+                    <span className="font-mono text-white">{formatINR(Number(order.sgstAmount))}</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex justify-between text-xs text-on-surface-variant">
+                  <span>IGST (18%)</span>
+                  <span className="font-mono text-white">{formatINR(Number(order.igstAmount || order.totalGST))}</span>
+                </div>
+              )}
             </div>
-            <div className="flex justify-between pt-2 border-t border-outline-variant/20">
-              <span className="text-white font-bold">Grand Total</span>
-              <span className="text-primary-container font-bold">{formatINR(Number(order.grandTotal))}</span>
+
+            <div className="flex justify-between pt-1">
+              <span className="text-slate-gray font-bold">Total GST (18%)</span>
+              <span className="text-white font-bold">{formatINR(Number(order.totalGST))}</span>
+            </div>
+
+            <div className="flex justify-between pt-2 border-t border-outline-variant/30 text-sm md:text-base">
+              <span className="text-white font-black">Grand Total</span>
+              <span className="text-primary-container font-black">{formatINR(Number(order.grandTotal))}</span>
             </div>
           </div>
           {order.payment && (

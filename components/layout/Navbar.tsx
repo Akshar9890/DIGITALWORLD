@@ -3,7 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import { ShoppingCart, User as UserIcon, Menu, X, Package, Shield, FileText, Settings, LogOut, Search, ChevronRight, Flame, Phone, Mail } from "lucide-react";
+import {
+  ShoppingCart,
+  User as UserIcon,
+  Menu,
+  X,
+  Package,
+  Shield,
+  FileText,
+  Settings,
+  LogOut,
+  Search,
+  ChevronRight,
+  Phone,
+  Mail,
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MagneticButton } from "@/components/ui/MagneticButton";
@@ -16,12 +30,10 @@ export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
-  const [cartBadgeAnimate, setCartBadgeAnimate] = useState(false);
 
   const isAdmin = session?.user?.role === "admin";
   const isWholesale = session?.user?.role === "wholesale_approved";
 
-  // Fetch cart item count & react to updates
   useEffect(() => {
     let isMounted = true;
     async function updateCartCount() {
@@ -30,9 +42,7 @@ export function Navbar() {
         if (res.ok) {
           const data = await res.json();
           const totalItems = data.items?.reduce((acc: number, item: any) => acc + item.quantity, 0) || 0;
-          if (isMounted) {
-            setCartCount(totalItems);
-          }
+          if (isMounted) setCartCount(totalItems);
         } else {
           if (isMounted) setCartCount(0);
         }
@@ -64,17 +74,17 @@ export function Navbar() {
   }, [pathname]);
 
   const navLinks = [
+    { href: "/", label: "Home" },
     { href: "/catalog", label: "Catalog" },
     { href: "/#applications", label: "Applications" },
     { href: "/#how-it-works", label: "How It Works" },
-    { href: "/#technical", label: "Technical" },
-    { href: "/#reviews", label: "Reviews" },
+    { href: "/#technical", label: "Technical Docs" },
     { href: "/#faq", label: "FAQ" },
   ];
 
   return (
     <div className="sticky top-0 z-50 w-full flex flex-col">
-      {/* Top Bar with Phone & Gmail */}
+      {/* Top Bar with Phone & Support */}
       <div className="bg-[#111214] border-b border-outline-variant/20 py-1.5 px-4 text-xs font-body-technical text-slate-gray">
         <div className="page-container flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-6">
@@ -88,9 +98,9 @@ export function Navbar() {
             </a>
           </div>
           <div className="hidden sm:flex items-center gap-4 text-[11px] text-tertiary">
-            <span>⚡ Direct Wholesale & Industrial Fire Safety Suppressor</span>
+            <span>⚡ Direct Wholesale &amp; Industrial Fire Protection Platform</span>
             <span>|</span>
-            <span>18% GST Invoice Included</span>
+            <span>18% GST Tax Invoice Included</span>
           </div>
         </div>
       </div>
@@ -106,186 +116,197 @@ export function Navbar() {
         }`}
       >
         <div className="page-container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="group flex items-center gap-3">
-          <motion.div
-            whileHover={{ scale: 1.05, rotate: 5 }}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
-            className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-white shadow-lg shadow-primary-container/20 group-hover:bg-[#920503] transition-colors"
-          >
-            <Shield size={24} className="text-white" />
-          </motion.div>
-          <div className="flex flex-col">
-            <span className="font-headline-sm text-xl leading-tight tracking-tight text-white group-hover:text-primary transition-colors">
-              DIGITALWORLD
-            </span>
-            <span className="text-[10px] font-label-caps tracking-[0.2em] text-primary flex items-center gap-1">
-              <span className="h-1 w-1 rounded-full bg-primary animate-ping" />
-              INDUSTRIAL FIRE TECH
-            </span>
-          </div>
-        </Link>
-
-        {/* Desktop Navigation Links */}
-        <nav className="hidden lg:flex items-center gap-7">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.label}
-                href={link.href}
-                className={`relative py-1 text-sm font-medium tracking-wide transition-colors ${
-                  isActive
-                    ? "text-white font-semibold"
-                    : "text-on-surface-variant hover:text-white"
-                }`}
-              >
-                {link.label}
-                {isActive && (
-                  <motion.div
-                    layoutId="activeNavIndicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-container rounded-full"
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Desktop Right Actions */}
-        <div className="hidden md:flex items-center gap-5">
-          {/* Quick Search */}
+          {/* Logo */}
           <Link
-            href="/catalog"
-            className="p-2 text-slate-gray hover:text-white transition-colors rounded-full hover:bg-surface-container"
-            title="Search Catalog"
+            href="/"
+            onClick={() => {
+              if (pathname === "/") {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }
+            }}
+            className="group flex items-center gap-3"
           >
-            <Search size={20} />
+            <motion.div
+              whileHover={{ scale: 1.05, rotate: 5 }}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-container text-white shadow-lg shadow-primary-container/20 group-hover:bg-[#920503] transition-colors"
+            >
+              <Shield size={24} className="text-white" />
+            </motion.div>
+            <div className="flex flex-col">
+              <span className="font-headline-sm text-xl leading-tight tracking-tight text-white group-hover:text-primary transition-colors font-bold">
+                DIGITALWORLD
+              </span>
+              <span className="text-[10px] font-label-caps tracking-[0.2em] text-primary flex items-center gap-1">
+                <span className="h-1 w-1 rounded-full bg-primary animate-ping" />
+                FIRE PROTECTION PLATFORM
+              </span>
+            </div>
           </Link>
 
-          {/* Cart Icon with scale badge animation */}
-          <Link
-            href="/cart"
-            className="relative p-2 text-on-surface-variant hover:text-white transition-colors rounded-full hover:bg-surface-container"
-          >
-            <ShoppingCart size={22} />
-            {cartCount > 0 && (
-              <motion.span
-                animate={cartBadgeAnimate ? { scale: [1, 1.4, 1] } : { scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary-container text-[11px] font-bold text-white shadow-md"
-              >
-                {cartCount}
-              </motion.span>
-            )}
-          </Link>
+          {/* Desktop Navigation Links */}
+          <nav className="hidden lg:flex items-center gap-6">
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href;
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={() => {
+                    if (link.href === "/" && pathname === "/") {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }
+                  }}
+                  className={`relative py-1 text-xs font-label-caps tracking-wider uppercase transition-colors ${
+                    isActive
+                      ? "text-white font-bold"
+                      : "text-on-surface-variant hover:text-white"
+                  }`}
+                >
+                  {link.label}
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeNavIndicator"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-container rounded-full"
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
 
-          {/* Account Profile / Login */}
-          {status === "loading" ? (
-            <div className="h-10 w-10 animate-pulse rounded-full bg-surface-container" />
-          ) : session ? (
-            <div className="relative">
-              <button
-                onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-high border border-outline-variant/30 hover:border-tertiary transition-colors"
-              >
-                <UserIcon size={20} className="text-on-surface" />
-              </button>
+          {/* Desktop Right Actions */}
+          <div className="hidden md:flex items-center gap-4">
+            {/* Quick Search */}
+            <Link
+              href="/catalog"
+              className="p-2 text-slate-gray hover:text-white transition-colors rounded-full hover:bg-surface-container"
+              title="Search Catalog"
+            >
+              <Search size={18} />
+            </Link>
 
-              <AnimatePresence>
-                {isProfileDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    className="absolute right-0 mt-3 w-60 rounded-card border border-outline-variant/30 bg-surface-charcoal/95 shadow-2xl backdrop-blur-xl overflow-hidden z-50"
-                  >
-                    <div className="p-4 border-b border-outline-variant/20">
-                      <p className="font-headline-sm text-sm text-white truncate">{session.user.name}</p>
-                      <p className="text-body-technical text-xs text-slate-gray truncate">{session.user.email}</p>
-                      {isWholesale && (
-                        <span className="badge-wholesale mt-2 block w-max">B2B Approved</span>
-                      )}
-                      {isAdmin && (
-                        <span className="badge-error mt-2 block w-max">Admin: {session.user.adminSubRole}</span>
-                      )}
-                    </div>
-                    <div className="p-2">
-                      <Link
-                        href="/account/orders"
-                        className="flex items-center gap-2.5 rounded-control px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-container hover:text-white transition-colors"
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                      >
-                        <Package size={16} /> My Orders
-                      </Link>
-                      <Link
-                        href="/account/quotes"
-                        className="flex items-center gap-2.5 rounded-control px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-container hover:text-white transition-colors"
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                      >
-                        <FileText size={16} /> My Quotations
-                      </Link>
-                      {isAdmin && (
+            {/* Cart Icon */}
+            <Link
+              href="/cart"
+              className="relative p-2 text-on-surface-variant hover:text-white transition-colors rounded-full hover:bg-surface-container"
+            >
+              <ShoppingCart size={20} />
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-primary-container text-[10px] font-bold text-white shadow-md">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
+            {/* Account Profile / Login */}
+            {status === "loading" ? (
+              <div className="h-9 w-9 animate-pulse rounded-full bg-surface-container" />
+            ) : session ? (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-high border border-outline-variant/30 hover:border-tertiary transition-colors"
+                >
+                  <UserIcon size={18} className="text-on-surface" />
+                </button>
+
+                <AnimatePresence>
+                  {isProfileDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                      className="absolute right-0 mt-3 w-60 rounded-card border border-outline-variant/30 bg-surface-charcoal/95 shadow-2xl backdrop-blur-xl overflow-hidden z-50"
+                    >
+                      <div className="p-4 border-b border-outline-variant/20">
+                        <p className="font-headline-sm text-sm text-white truncate">{session.user.name}</p>
+                        <p className="text-body-technical text-xs text-slate-gray truncate">{session.user.email}</p>
+                        {isWholesale && (
+                          <span className="badge-wholesale mt-2 block w-max text-[10px]">B2B Approved</span>
+                        )}
+                        {isAdmin && (
+                          <span className="badge-error mt-2 block w-max text-[10px]">Admin: {session.user.adminSubRole}</span>
+                        )}
+                      </div>
+                      <div className="p-2 text-xs">
                         <Link
-                          href="/admin"
-                          className="flex items-center gap-2.5 rounded-control px-3 py-2 text-sm text-status-error hover:bg-error-container/20 transition-colors"
+                          href="/account/orders"
+                          className="flex items-center gap-2.5 rounded-control px-3 py-2 text-on-surface-variant hover:bg-surface-container hover:text-white transition-colors"
                           onClick={() => setIsProfileDropdownOpen(false)}
                         >
-                          <Settings size={16} /> Admin Dashboard
+                          <Package size={15} /> My Orders
                         </Link>
-                      )}
-                    </div>
-                    <div className="p-2 border-t border-outline-variant/20">
-                      <button
-                        onClick={() => signOut()}
-                        className="flex w-full items-center gap-2.5 rounded-control px-3 py-2 text-sm text-on-surface-variant hover:bg-surface-container hover:text-white transition-colors"
-                      >
-                        <LogOut size={16} /> Sign Out
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <Link href="/login" className="text-xs font-label-caps tracking-widest text-on-surface-variant hover:text-white transition-colors">
-              SIGN IN
-            </Link>
-          )}
-
-          {/* Primary CTA: GET QUOTATION */}
-          <Link href="/quotation">
-            <MagneticButton className="btn-primary gap-2 px-5 py-2.5 text-xs tracking-wider shadow-lg shadow-primary-container/20">
-              <FileText size={15} />
-              <span>GET QUOTATION</span>
-              <ChevronRight size={14} />
-            </MagneticButton>
-          </Link>
-        </div>
-
-        {/* Mobile Toggle */}
-        <div className="flex items-center gap-4 md:hidden">
-          <Link href="/cart" className="relative p-2 text-on-surface-variant">
-            <ShoppingCart size={24} />
-            {cartCount > 0 && (
-              <span className="absolute top-0 right-0 flex h-5 w-5 items-center justify-center rounded-full bg-primary-container text-[10px] font-bold text-white">
-                {cartCount}
-              </span>
+                        <Link
+                          href="/account/quotes"
+                          className="flex items-center gap-2.5 rounded-control px-3 py-2 text-on-surface-variant hover:bg-surface-container hover:text-white transition-colors"
+                          onClick={() => setIsProfileDropdownOpen(false)}
+                        >
+                          <FileText size={15} /> My Quotations
+                        </Link>
+                        {isAdmin && (
+                          <Link
+                            href="/admin"
+                            className="flex items-center gap-2.5 rounded-control px-3 py-2 text-status-error hover:bg-error-container/20 transition-colors"
+                            onClick={() => setIsProfileDropdownOpen(false)}
+                          >
+                            <Settings size={15} /> Admin Dashboard
+                          </Link>
+                        )}
+                      </div>
+                      <div className="p-2 border-t border-outline-variant/20">
+                        <button
+                          type="button"
+                          onClick={() => signOut()}
+                          className="flex w-full items-center gap-2.5 rounded-control px-3 py-2 text-xs text-on-surface-variant hover:bg-surface-container hover:text-white transition-colors"
+                        >
+                          <LogOut size={15} /> Sign Out
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <Link href="/login" className="text-xs font-label-caps tracking-widest text-on-surface-variant hover:text-white transition-colors">
+                SIGN IN
+              </Link>
             )}
-          </Link>
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 text-on-surface focus:outline-none"
-          >
-            {isMobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
-          </button>
-        </div>
-      </div>
 
-      {/* Mobile Bottom Sheet */}
-      <MobileBottomSheet isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
+            {/* Primary CTA: GET QUOTATION */}
+            <Link href="/quotation">
+              <MagneticButton className="btn-primary gap-2 px-4 py-2.5 text-xs tracking-wider shadow-lg shadow-primary-container/20">
+                <FileText size={14} />
+                <span>B2B QUOTE</span>
+                <ChevronRight size={13} />
+              </MagneticButton>
+            </Link>
+          </div>
+
+          {/* Mobile Toggle */}
+          <div className="flex items-center gap-3 md:hidden">
+            <Link href="/cart" className="relative p-2 text-on-surface-variant">
+              <ShoppingCart size={22} />
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full bg-primary-container text-[10px] font-bold text-white">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 text-on-surface focus:outline-none"
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
+        </div>
+
+        <MobileBottomSheet isOpen={isMobileMenuOpen} onClose={() => setIsMobileMenuOpen(false)} />
       </motion.header>
     </div>
   );

@@ -23,15 +23,17 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DigitalWorld Industrial | Advanced Fire Suppression Systems",
+  title: "DigitalWorld Industrial | Advanced Fire Suppression Platform",
   description:
-    "Premium industrial distributor of Heat Aerosol Fire Extinguishing Devices for electrical panels, server racks, MCB boxes, and critical machinery.",
+    "Premium industrial platform for Heat Aerosol Fire Extinguishing Devices, protection sizing calculation, formal B2B quotations, and compliance verification for electrical panels, server racks, and machinery.",
   keywords: [
     "Fire Suppression",
     "Heat Aerosol",
     "Electrical Panel Fire Protection",
+    "Protection Selector",
     "Industrial Safety",
     "Aerosol Extinguisher",
+    "B2B Quotation",
   ],
 };
 
